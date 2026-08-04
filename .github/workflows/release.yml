@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: marketplace
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate and package
+        run: npm run package:vsix
+
+      - name: Locate VSIX
+        id: vsix
+        run: echo "path=$(find . -maxdepth 1 -name '*.vsix' -print -quit)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Visual Studio Marketplace
+        run: npx --no-install vsce publish --packagePath "${{ steps.vsix.outputs.path }}" --skip-duplicate
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        run: npx --no-install ovsx -p "$OVSX_PAT" publish "${{ steps.vsix.outputs.path }}" --skip-duplicate
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
