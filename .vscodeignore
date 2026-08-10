@@ -6,6 +6,7 @@ tsconfig.json
 **/*.ts
 node_modules/**
 design/**
+examples/**
 esbuild.js
 eslint.config.mjs
 .vscode-test.mjs

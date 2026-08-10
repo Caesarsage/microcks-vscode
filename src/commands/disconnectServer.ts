@@ -15,16 +15,16 @@ export function registerDisconnectServerCommand(
         return;
       }
       const confirmation = await vscode.window.showWarningMessage(
-        `Delete Microcks CLI context "${current.name}"?`,
+        `Remove Microcks context "${current.name}"? This deletes its saved profile and authentication from the CLI config.`,
         { modal: true },
-        "Delete Context"
+        "Remove Context"
       );
-      if (confirmation !== "Delete Context") {
+      if (confirmation !== "Remove Context") {
         return;
       }
       await deleteContext(context.cliOptions(), current.name);
       await context.refresh();
-      vscode.window.showInformationMessage(`Deleted context ${current.name}.`);
+      vscode.window.showInformationMessage(`Removed context "${current.name}".`);
     } catch (error) {
       vscode.window.showErrorMessage((error as Error).message);
     }

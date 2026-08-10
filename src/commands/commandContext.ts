@@ -91,7 +91,8 @@ export function createMicrocksCommandContext(
       );
       if (current) {
         statusBar.text = `$(server) Microcks: ${current.name}`;
-        statusBar.tooltip = `Connected to ${current.server}. Click to switch context.`;
+        statusBar.tooltip =
+          `Selected context for ${current.server}. Click to switch context.`;
         statusBar.show();
       } else {
         statusBar.hide();

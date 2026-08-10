@@ -58,6 +58,19 @@ export async function deleteContext(
   ]);
 }
 
+export async function logoutContext(
+  options: CliJsonCommandOptions,
+  name: string
+): Promise<void> {
+  await requireCliCapabilities(options.executable, [
+    editorCapabilities.authLogout,
+  ]);
+  await executeMicrocksCli({
+    executable: options.executable,
+    args: ["logout", name, ...buildBaseArgs(options)],
+  });
+}
+
 async function executeJson<T>(
   options: CliJsonCommandOptions,
   args: string[]

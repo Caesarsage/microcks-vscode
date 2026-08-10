@@ -1,9 +1,16 @@
 import * as vscode from "vscode";
-import { TestResult, TestResultSummary } from "../../cli";
+import {
+  TestCaseResult,
+  TestResult,
+  TestResultSummary,
+  TestStepResult,
+} from "../../cli";
 
 export type TestsTreeNode =
   | TestsRootNode
   | TestResultNode
+  | TestCaseResultNode
+  | TestStepResultNode
   | TestMessageNode
   | TestActionNode;
 
@@ -41,6 +48,28 @@ export class TestResultNode extends vscode.TreeItem {
   }
 }
 
+export class TestCaseResultNode extends vscode.TreeItem {
+  constructor(readonly result: TestCaseResult) {
+    super(result.operationName, vscode.TreeItemCollapsibleState.Collapsed);
+    this.contextValue = "test-case-result";
+    this.iconPath = new vscode.ThemeIcon(result.success ? "pass" : "error");
+    this.description = resultDescription(result.success, result.elapsedTime);
+    this.tooltip = result.operationName;
+  }
+}
+
+export class TestStepResultNode extends vscode.TreeItem {
+  constructor(readonly result: TestStepResult, index: number) {
+    const label =
+      result.requestName || result.eventMessageName || `Step ${index + 1}`;
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = "test-step-result";
+    this.iconPath = new vscode.ThemeIcon(result.success ? "pass" : "error");
+    this.description = resultDescription(result.success, result.elapsedTime);
+    this.tooltip = result.message || label;
+  }
+}
+
 export class TestMessageNode extends vscode.TreeItem {
   constructor(text: string, tooltip?: string, icon = "info") {
     super(text, vscode.TreeItemCollapsibleState.None);
@@ -71,6 +100,9 @@ export class TestActionNode extends vscode.TreeItem {
 }
 
 function testLabel(result: TestResultSummary): string {
+  if (result.serviceId && result.testNumber !== undefined) {
+    return `${result.serviceId} · #${result.testNumber}`;
+  }
   if (result.serviceId) {
     return result.serviceId;
   }
@@ -78,6 +110,11 @@ function testLabel(result: TestResultSummary): string {
     return `Test #${result.testNumber}`;
   }
   return result.id;
+}
+
+function resultDescription(success: boolean, elapsedTime?: number): string {
+  const status = success ? "passed" : "failed";
+  return elapsedTime === undefined ? status : `${status} · ${elapsedTime}ms`;
 }
 
 function testTooltip(result: TestResultSummary): string {

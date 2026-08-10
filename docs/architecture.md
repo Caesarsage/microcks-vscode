@@ -200,7 +200,7 @@ The extension presents the ephemeral environment under a dedicated **Dry-Run
 Session** root. When the process stops, cached services and test results remain
 visible, but actions that require the stopped server are disabled.
 
-## Connected Server Workflow
+## Selected Server Workflow
 
 ```mermaid
 sequenceDiagram
@@ -214,9 +214,9 @@ sequenceDiagram
         VSCode->>CLI: start --output json
         CLI->>Server: Start container and wait for readiness
         CLI-->>VSCode: Server and context JSON
-    else Connect remote
-        Developer->>VSCode: Connect to Remote Server
-        VSCode->>CLI: login SERVER --sso
+    else Sign in remotely
+        Developer->>VSCode: Sign In to Remote Server
+        VSCode->>CLI: login SERVER [--name NAME] [--sso]
         CLI->>Server: Authenticate
         CLI-->>VSCode: CLI context selected
     end
@@ -234,25 +234,31 @@ sequenceDiagram
     Server-->>CLI: Test results
     CLI-->>VSCode: Test JSON
 
-    VSCode->>VSCode: Render Connected Server roots
+    VSCode->>VSCode: Render Selected Server roots
 ```
 
-The selected CLI context backs the **Connected Server** roots in the Services
-and Tests views. Switching contexts updates both roots and the active-context
-status bar.
+The selected CLI context backs the **Selected Server** roots in the Services
+and Tests views. A saved context is configuration, not proof of connectivity.
+Each tree starts in `checking` state and reports `reachable` only after its CLI
+query succeeds. Switching contexts updates both roots and the active-context
+status bar. Expanding a test run lazily fetches its operation and step details;
+the Tests view can also apply a CLI-side service filter.
 
 ## State Model
 
-The connected server and dry-run session are independent states:
+The selected server and dry-run session are independent states:
 
 ```mermaid
 stateDiagram-v2
-    state "Connected Server" as Connected {
-        [*] --> Disconnected
-        Disconnected --> Available: start or login
-        Available --> Unreachable: request fails
-        Unreachable --> Available: refresh or switch context
-        Available --> Disconnected: delete context
+    state "Selected Server" as Selected {
+        [*] --> NotSelected
+        NotSelected --> Checking: start, login, or select context
+        Checking --> Reachable: request succeeds
+        Checking --> Unreachable: request fails
+        Reachable --> Checking: refresh or switch context
+        Unreachable --> Checking: refresh or switch context
+        Reachable --> NotSelected: remove context
+        Unreachable --> NotSelected: remove context
     }
 
     state "Dry-Run Session" as DryRun {
@@ -266,5 +272,5 @@ stateDiagram-v2
     }
 ```
 
-This separation prevents a dry-run from overwriting the persistent connected
+This separation prevents a dry-run from overwriting the persistent selected
 context and prevents stale mock URLs from being presented as live endpoints.

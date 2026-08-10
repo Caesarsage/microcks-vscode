@@ -1,22 +1,92 @@
 # Microcks VS Code Extension
 
-A TypeScript VS Code extension for the Microcks developer workflow.
+The Microcks VS Code Extension brings the Microcks API mocking and contract
+testing workflow into VS Code. The long-term goal is to provide the IDE
+experience for Microcks: discover services, import API artifacts, run dry-run
+tests, inspect mocks, and move between local, ephemeral, and remote Microcks
+environments without leaving the editor.
+
+The extension is deliberately CLI-first. VS Code owns the native editor
+experience, while `microcks-cli` remains the single integration layer for
+authentication, contexts, local server lifecycle, imports, service queries, and
+dry-run execution. When the CLI contract improves, the extension can benefit
+without growing a second Microcks control-plane implementation.
+
+## What it does
 
 It currently ships:
 
 - An **Activity Bar** entry that opens the Microcks sidebar.
 - A **Services** tree view backed by Microcks CLI JSON commands that lets you expand each service into its operations.
-- A **Switch Context** command backed by the CLI context JSON contract. The extension never reads or stores CLI credentials.
+- A **Tests** tree with run, operation, and step-level results plus service filtering.
+- A **Context Manager** backed by CLI context and authentication contracts. The extension never reads or stores CLI credentials.
 - A **Refresh** action on the view title bar.
-- **Start Local Microcks**, **Connect to Remote Server**, **Import Current API File**, and **Run Dry-Run for API File** commands backed by the Microcks CLI.
-- Separate **Connected Server** and **Dry-Run Session** roots in the Services and Tests views.
+- **Start Local Microcks**, **Sign In to Remote Server**, **Import Current API File**, and **Run Dry-Run for API File** commands backed by the Microcks CLI.
+- Separate **Selected Server** and **Dry-Run Session** roots in the Services and Tests views.
 - An **Open Service in Browser** context action on each service.
 - An **Operation Inspector** webview with mock invocation, examples, and compare support.
+
+## Architecture at a glance
+
+```text
+Developer
+  |
+  v
+VS Code
+  |
+  v
+Microcks Extension
+  |
+  v
+CLI Runner
+  |
+  v
+microcks-cli
+  |
+  +--> Docker/Podman + ephemeral Microcks for dry-run sessions
+  |
+  +--> Local or remote Microcks server for connected workflows
+```
+
+The extension consumes machine-readable CLI output, including JSON documents
+for completed commands and newline-delimited JSON events for watched dry-run
+sessions. It does not parse human terminal output and does not read CLI
+credentials.
 
 See [Architecture](docs/architecture.md) for the CLI boundary, runtime
 requirements, output contracts, state model, and workflow diagrams.
 Maintainers can use [Publishing](docs/publishing.md) for Marketplace ownership,
 release preparation, automated publishing, recovery, and verification.
+
+## Roadmap
+
+- [x] Activity Bar container and Microcks sidebar
+- [x] Services tree backed by CLI JSON
+- [x] Selected server and dry-run session roots
+- [x] Import current API file
+- [x] Start local Microcks
+- [x] Connect to remote Microcks through CLI contexts
+- [x] Run one-shot and watched dry-run tests
+- [x] Operation Inspector with mock invocation, examples, and compare support
+- [x] Tests tree navigation, lazy result details, and service filtering
+- [x] Authentication and context management UX
+- [ ] Add richer mock management actions
+- [ ] Add Explorer and editor-title integration for supported API artifacts
+- [ ] Publish marketplace screenshots for sidebar, diagnostics, command palette,
+  dry-run execution, and Inspector flows
+- [ ] Explore AI-assisted API testing workflows after the core extension
+  experience is stable
+
+## Marketplace media checklist
+
+The Marketplace listing should eventually show the product in use rather than
+only describe it. Useful screenshots include:
+
+- Microcks Activity Bar and Services tree
+- Problems panel or diagnostics surfaced from a contract test
+- Command Palette entries for start, connect, import, and dry-run
+- Dry-run output and Tests tree state
+- Operation Inspector request, response, examples, and compare flow
 
 ## Test Locally
 
@@ -40,8 +110,23 @@ Expected result without any Microcks server:
 - The Microcks Activity Bar container appears.
 - The Services view renders action rows instead of a dead-end error.
 - Command Palette entries such as `Microcks: Start Local Server`,
-  `Microcks: Connect to Remote Server`, and
+  `Microcks: Sign In to Remote Server`, and
   `Microcks: Run Dry-Run for API File` are available.
+
+### Install or Update the CLI
+
+The extension can download the latest stable Microcks CLI release for the
+current operating system. Use any of these entry points:
+
+- Click the package icon in the Services or Tests view header.
+- Run **Microcks: Install or Update CLI** from the Command Palette.
+- Use **Install Microcks CLI** or **Update Microcks CLI** from a recovery row
+  when the CLI is missing or incompatible.
+
+The extension asks for confirmation, downloads the matching release asset,
+verifies its checksum when one is published, stores it in VS Code extension
+storage, and selects it as the managed CLI. `microcks.cliPath` continues to take
+precedence when explicitly configured.
 
 For faster iteration while editing TypeScript, run this in a terminal before
 pressing F5:
@@ -75,14 +160,13 @@ file on disk.
 For a local demo in this workspace, start the target API first:
 
 ```bash
-cd ../demo-api
-go run .
+npm run example:demo-api
 ```
 
 Then choose this artifact in the file picker:
 
 ```text
-../microcks-cli/samples/ecommerce-api-openapi.yml
+examples/demo-api/ecommerce-api-openapi.yml
 ```
 
 When asked which operations to test, select `GET /products`. The demo target API
@@ -119,15 +203,21 @@ channel, and auto-connects only after the CLI start command succeeds. If the
 server starts empty, the Services tree can still show no services until an
 artifact is imported into that server.
 
-#### Option C: Connect to a Remote Microcks Server
+#### Option C: Sign In to a Remote Microcks Server
 
 Use this when your team already has a shared Microcks instance.
 
-1. Click **Connect to Remote Server** in the Services view, or run
-   `Microcks: Connect to Remote Server`.
-2. Enter the remote Microcks URL, for example `https://microcks.example.com`.
-3. The CLI performs SSO when required, creates/selects its context, and the
-   extension refreshes the Services and Tests views.
+1. Click **Sign In to Remote Server** in the Services view, or run
+   `Microcks: Sign In to Remote Server`.
+2. Enter the remote Microcks URL and an optional context name.
+3. Choose browser SSO or no authentication for an unsecured local/dev server.
+4. The CLI creates/selects its context, and the extension refreshes the
+   Services and Tests views.
+
+Use **Microcks: Switch Context** to select saved contexts, start a local server,
+sign in to another server, sign out while keeping a profile, or remove the
+current profile. Selecting a context does not imply that its server is online;
+the trees report `checking`, `reachable`, or `unreachable` from real requests.
 
 ### Full Server-Backed Manual Test
 
@@ -167,13 +257,15 @@ No long-running Microcks server required:
 
 - seeing the Microcks Activity Bar view
 - seeing the recovery and action rows
-- launching **Start Local Microcks** or **Connect to Remote Server**
+- launching **Start Local Microcks** or **Sign In to Remote Server**
 - running a dry-run, provided a container runtime and real target API are available
 
 CLI and connected Microcks server required:
 
 - loading imported services with `microcks service list --output json`
 - expanding service operations with `microcks service get --output json`
+- loading and filtering test runs with `microcks test list --output json`
+- expanding operation and step details with `microcks test get --output json`
 - invoking mocks
 - loading Microcks examples in the Inspector
 - comparing mock responses with a real service
@@ -188,6 +280,7 @@ actions. It does not fall back to the Microcks management REST API.
 
 ```
 microcks-vscode/
+  examples/demo-api/        # runnable contract-test target and OpenAPI artifact
   media/                    # Activity Bar and package icons
   design/                   # Static design references, excluded from package
   dist/                     # Bundled extension entrypoint emitted by esbuild

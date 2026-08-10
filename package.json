@@ -62,19 +62,29 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "microcks.refreshTests",
+        "title": "Microcks: Refresh Tests",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "microcks.startLocalServer",
         "title": "Microcks: Start Local Server",
         "icon": "$(run)"
       },
       {
         "command": "microcks.connectRemoteServer",
-        "title": "Microcks: Connect to Remote Server",
+        "title": "Microcks: Sign In to Remote Server",
         "icon": "$(plug)"
       },
       {
         "command": "microcks.disconnectServer",
-        "title": "Microcks: Disconnect Server",
-        "icon": "$(debug-disconnect)"
+        "title": "Microcks: Remove Current Context",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "microcks.signOutContext",
+        "title": "Microcks: Sign Out of Current Context",
+        "icon": "$(sign-out)"
       },
       {
         "command": "microcks.runDryRunForCurrentSpec",
@@ -98,7 +108,18 @@
       },
       {
         "command": "microcks.switchContext",
-        "title": "Microcks: Switch Context"
+        "title": "Microcks: Switch Context",
+        "icon": "$(server)"
+      },
+      {
+        "command": "microcks.filterTests",
+        "title": "Microcks: Filter Tests by Service",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "microcks.clearTestFilter",
+        "title": "Microcks: Clear Test Filter",
+        "icon": "$(clear-all)"
       },
       {
         "command": "microcks.setCliPath",
@@ -108,7 +129,7 @@
       {
         "command": "microcks.openCliInstallation",
         "title": "Microcks: Install or Update CLI",
-        "icon": "$(cloud-download)"
+        "icon": "$(package)"
       },
       {
         "command": "microcks.openService",
@@ -143,19 +164,49 @@
           "group": "navigation@2"
         },
         {
-          "command": "microcks.connectRemoteServer",
+          "command": "microcks.switchContext",
           "when": "view == microcksServices",
           "group": "navigation@3"
         },
         {
-          "command": "microcks.stopDryRunWatch",
+          "command": "microcks.connectRemoteServer",
           "when": "view == microcksServices",
           "group": "navigation@4"
         },
         {
-          "command": "microcks.importCurrentFile",
+          "command": "microcks.stopDryRunWatch",
           "when": "view == microcksServices",
           "group": "navigation@5"
+        },
+        {
+          "command": "microcks.importCurrentFile",
+          "when": "view == microcksServices",
+          "group": "navigation@6"
+        },
+        {
+          "command": "microcks.openCliInstallation",
+          "when": "view == microcksServices",
+          "group": "navigation@7"
+        },
+        {
+          "command": "microcks.refreshTests",
+          "when": "view == microcksTests",
+          "group": "navigation@1"
+        },
+        {
+          "command": "microcks.filterTests",
+          "when": "view == microcksTests",
+          "group": "navigation@2"
+        },
+        {
+          "command": "microcks.switchContext",
+          "when": "view == microcksTests",
+          "group": "navigation@3"
+        },
+        {
+          "command": "microcks.openCliInstallation",
+          "when": "view == microcksTests",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -211,6 +262,9 @@
     "typecheck": "npm run check-types",
     "lint": "eslint src",
     "test": "vscode-test",
+    "test:example": "go -C examples/demo-api test ./...",
+    "example:demo-api": "go -C examples/demo-api run .",
+    "example:demo-api:drift": "go -C examples/demo-api run . -drift",
     "package:vsix": "vsce package --no-dependencies"
   },
   "dependencies": {

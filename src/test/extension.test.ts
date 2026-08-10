@@ -30,17 +30,46 @@ suite("Microcks extension", () => {
     const commands = await vscode.commands.getCommands(true);
 
     assert.ok(commands.includes("microcks.refreshServices"));
+    assert.ok(commands.includes("microcks.refreshTests"));
     assert.ok(commands.includes("microcks.startLocalServer"));
     assert.ok(commands.includes("microcks.connectRemoteServer"));
     assert.ok(commands.includes("microcks.runDryRunForCurrentSpec"));
     assert.ok(commands.includes("microcks.setCliPath"));
     assert.ok(commands.includes("microcks.openCliInstallation"));
+    assert.ok(commands.includes("microcks.filterTests"));
+    assert.ok(commands.includes("microcks.clearTestFilter"));
+    assert.ok(commands.includes("microcks.signOutContext"));
     assert.ok(commands.includes("microcks.clearDryRunSession"));
     assert.ok(commands.includes("microcks.importCurrentFile"));
   });
 });
 
 suite("Microcks tree state", () => {
+  test("marks a selected server unreachable after its service request fails", async () => {
+    const provider = new ServicesProvider();
+    provider.setConnectedTarget({
+      serverUrl: "http://localhost:8585",
+      dataSource: {
+        listServices: async () => {
+          throw new Error("connection refused");
+        },
+        getServiceDetail: async () => {
+          throw new Error("connection refused");
+        },
+      },
+    });
+
+    const [root] = await provider.getChildren();
+    const children = await provider.getChildren(root);
+    assert.ok(
+      children.some((item) => item.label === "Microcks server is not reachable.")
+    );
+
+    const [updatedRoot] = await provider.getChildren();
+    assert.equal(updatedRoot.label, "Selected Server");
+    assert.equal(updatedRoot.description, "unreachable");
+  });
+
   test("keeps connected and dry-run service roots separate", async () => {
     const provider = new ServicesProvider();
 
@@ -70,6 +99,85 @@ suite("Microcks tree state", () => {
 
     provider.clearDryRunSession();
     assert.equal((await provider.getChildren()).length, 1);
+  });
+
+  test("loads full connected test details and operation steps on expansion", async () => {
+    const provider = new TestsProvider();
+    let detailRequests = 0;
+    provider.setConnectedDataSource({
+      listTests: async () => [{
+        id: "test-1",
+        serviceId: "Catalog API:1.0.0",
+        testNumber: 7,
+        success: false,
+        inProgress: false,
+      }],
+      getTest: async (id) => {
+        detailRequests += 1;
+        return {
+          id,
+          serviceId: "Catalog API:1.0.0",
+          testNumber: 7,
+          success: false,
+          inProgress: false,
+          testCaseResults: [{
+            operationName: "GET /products",
+            success: false,
+            elapsedTime: 42,
+            testStepResults: [{
+              requestName: "default",
+              success: false,
+              message: "price must be a number",
+            }],
+          }],
+        };
+      },
+    });
+
+    const [root] = await provider.getChildren();
+    const runs = await provider.getChildren(root);
+    const run = runs.find((item) => item.label === "Catalog API:1.0.0 · #7");
+    assert.ok(run);
+
+    const details = await provider.getChildren(run);
+    const operation = details.find((item) => item.label === "GET /products");
+    assert.ok(operation);
+    const steps = await provider.getChildren(operation);
+    assert.ok(steps.some((item) => item.label === "default"));
+
+    await provider.getChildren(run);
+    assert.equal(detailRequests, 1, "full test details should be cached");
+  });
+
+  test("filters connected tests by service through the CLI query", async () => {
+    const provider = new TestsProvider();
+    let requestedServiceId: string | undefined;
+    provider.setConnectedDataSource({
+      listTests: async (query) => {
+        requestedServiceId = query?.serviceId;
+        return [{
+          id: "test-1",
+          serviceId: "Catalog API:1.0.0",
+          success: true,
+          inProgress: false,
+        }];
+      },
+      getTest: async (id) => ({
+        id,
+        success: true,
+        inProgress: false,
+      }),
+    });
+
+    let [root] = await provider.getChildren();
+    await provider.getChildren(root);
+    assert.deepEqual(provider.getKnownServiceIds(), ["Catalog API:1.0.0"]);
+
+    provider.setServiceFilter("Catalog API:1.0.0");
+    [root] = await provider.getChildren();
+    const filtered = await provider.getChildren(root);
+    assert.equal(requestedServiceId, "Catalog API:1.0.0");
+    assert.ok(filtered.some((item) => item.label === "Clear Test Filter"));
   });
 });
 

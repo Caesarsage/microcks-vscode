@@ -28,21 +28,27 @@ interface DryRunSession {
   readonly cache: ServicesCache;
 }
 
+type ServerReachability = "checking" | "reachable" | "unreachable";
+
 export class ServicesProvider implements vscode.TreeDataProvider<ServicesTreeNode> {
   private readonly _onDidChange = new vscode.EventEmitter<
     ServicesTreeNode | undefined
   >();
   readonly onDidChangeTreeData = this._onDidChange.event;
 
-  private readonly connectedRoot = new ConnectedServerRootNode();
   private connectedTarget?: ServicesTarget;
   private connectedError?: Error;
+  private connectedReachability?: ServerReachability;
   private readonly connectedCache = createCache();
   private dryRun?: DryRunSession;
 
   setConnectedTarget(target: ServicesTarget | undefined, error?: Error): void {
     this.connectedTarget = target;
     this.connectedError = error;
+    this.connectedCache.services = [];
+    this.connectedCache.details.clear();
+    this.connectedCache.updatedAt = undefined;
+    this.connectedReachability = target ? "checking" : undefined;
     this._onDidChange.fire(undefined);
   }
 
@@ -86,7 +92,13 @@ export class ServicesProvider implements vscode.TreeDataProvider<ServicesTreeNod
 
   async getChildren(element?: ServicesTreeNode): Promise<ServicesTreeNode[]> {
     if (!element) {
-      const roots: ServicesTreeNode[] = [this.connectedRoot];
+      const roots: ServicesTreeNode[] = [
+        connectedRootNode(
+          this.connectedTarget,
+          this.connectedError,
+          this.connectedReachability
+        ),
+      ];
       if (this.dryRun) {
         roots.push(
           new DryRunSessionRootNode(
@@ -151,6 +163,9 @@ export class ServicesProvider implements vscode.TreeDataProvider<ServicesTreeNod
   ): Promise<ServicesTreeNode[]> {
     try {
       const services = await target.dataSource.listServices();
+      if (root.kind === "connected") {
+        this.setConnectedReachability("reachable");
+      }
       cache.services = services;
       cache.updatedAt = Date.now();
       if (services.length === 0) {
@@ -158,6 +173,9 @@ export class ServicesProvider implements vscode.TreeDataProvider<ServicesTreeNod
       }
       return services.map((service) => new ServiceNode(service, root));
     } catch (error) {
+      if (root.kind === "connected") {
+        this.setConnectedReachability("unreachable");
+      }
       if (error instanceof MicrocksCliReadinessError) {
         return cliRecoveryNodes(error);
       }
@@ -210,10 +228,40 @@ export class ServicesProvider implements vscode.TreeDataProvider<ServicesTreeNod
       (operation) => new OperationNode(element.service, operation, element.root)
     );
   }
+
+  private setConnectedReachability(reachability: ServerReachability): void {
+    if (this.connectedReachability === reachability) {
+      return;
+    }
+    this.connectedReachability = reachability;
+    this._onDidChange.fire(undefined);
+  }
 }
 
 function createCache(): ServicesCache {
   return { services: [], details: new Map<string, ServiceDetail>() };
+}
+
+function connectedRootNode(
+  target: ServicesTarget | undefined,
+  error: Error | undefined,
+  reachability: ServerReachability | undefined
+): ConnectedServerRootNode {
+  if (target) {
+    const status = reachability ?? "checking";
+    return new ConnectedServerRootNode(
+      "Selected Server",
+      status,
+      status === "unreachable" ? "warning" : "server-environment"
+    );
+  }
+  if (error instanceof MicrocksCliReadinessError) {
+    return new ConnectedServerRootNode("Microcks CLI", error.reason, "terminal");
+  }
+  if (error) {
+    return new ConnectedServerRootNode("Selected Server", "unreachable", "warning");
+  }
+  return new ConnectedServerRootNode("Server Context", "not selected", "server");
 }
 
 function disconnectedActions(): ServicesTreeNode[] {
@@ -226,7 +274,7 @@ function disconnectedActions(): ServicesTreeNode[] {
       "Start and select a local Microcks context"
     ),
     new ActionNode(
-      "Connect to Remote Server",
+      "Sign In to Remote Server",
       "microcks.connectRemoteServer",
       "plug",
       "Log in and select a remote Microcks context"
@@ -277,7 +325,7 @@ function serverRecoveryNodes(error: Error): ServicesTreeNode[] {
       "Select another Microcks CLI context"
     ),
     new ActionNode(
-      "Connect to Remote Server",
+      "Sign In to Remote Server",
       "microcks.connectRemoteServer",
       "plug",
       "Log in to another Microcks server"
@@ -300,7 +348,7 @@ function cliRecoveryNodes(error: MicrocksCliReadinessError): ServicesTreeNode[] 
     new ActionNode(
       error.reason === "missing" ? "Install Microcks CLI" : "Update Microcks CLI",
       "microcks.openCliInstallation",
-      "cloud-download",
+      "package",
       "Install a compatible Microcks CLI"
     ),
     new ActionNode(

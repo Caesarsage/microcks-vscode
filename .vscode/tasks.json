@@ -3,8 +3,8 @@
   "tasks": [
     {
       "label": "npm: compile",
-      "type": "npm",
-      "script": "compile",
+      "type": "shell",
+      "command": "if [ -s \"$HOME/.nvm/nvm.sh\" ]; then . \"$HOME/.nvm/nvm.sh\"; fi; npm run compile",
       "problemMatcher": "$tsc",
       "presentation": { "reveal": "silent" },
       "group": { "kind": "build", "isDefault": true }

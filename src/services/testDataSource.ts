@@ -8,8 +8,13 @@ import {
 } from "../cli";
 
 export interface TestsDataSource {
-  listTests(size?: number): Promise<TestResultSummary[]>;
+  listTests(query?: TestListQuery): Promise<TestResultSummary[]>;
   getTest(id: string): Promise<TestResult>;
+}
+
+export interface TestListQuery {
+  readonly serviceId?: string;
+  readonly size?: number;
 }
 
 export interface CliTestsDataSourceOptions {
@@ -24,9 +29,12 @@ export class CliTestsDataSource implements TestsDataSource {
 
   constructor(private readonly options: CliTestsDataSourceOptions) {}
 
-  async listTests(size = 50): Promise<TestResultSummary[]> {
+  async listTests(query: TestListQuery = {}): Promise<TestResultSummary[]> {
     await this.ensureCapabilities();
-    return listTests(this.options, { size });
+    return listTests(this.options, {
+      serviceId: query.serviceId,
+      size: query.size ?? 50,
+    });
   }
 
   async getTest(id: string): Promise<TestResult> {

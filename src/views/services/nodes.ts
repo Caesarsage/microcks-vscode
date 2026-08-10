@@ -18,10 +18,11 @@ export interface ServiceRootContext {
 }
 
 export class ConnectedServerRootNode extends vscode.TreeItem {
-  constructor() {
-    super("Connected Server", vscode.TreeItemCollapsibleState.Expanded);
+  constructor(label: string, description?: string, icon = "server-environment") {
+    super(label, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = "connectedServerRoot";
-    this.iconPath = new vscode.ThemeIcon("server-environment");
+    this.description = description;
+    this.iconPath = new vscode.ThemeIcon(icon);
   }
 }
 

@@ -32,7 +32,22 @@ export interface TestResultSummary {
 }
 
 export interface TestResult extends TestResultSummary {
-  testCaseResults?: unknown[];
+  testCaseResults?: TestCaseResult[];
+}
+
+export interface TestCaseResult {
+  success: boolean;
+  elapsedTime?: number;
+  operationName: string;
+  testStepResults?: TestStepResult[];
+}
+
+export interface TestStepResult {
+  success: boolean;
+  elapsedTime?: number;
+  requestName?: string;
+  eventMessageName?: string;
+  message?: string;
 }
 
 export interface CliJsonCommandOptions {

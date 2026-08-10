@@ -3,6 +3,9 @@ import { executeMicrocksCli, MicrocksCliError } from "./cliExecutor";
 export const CAPABILITIES_SCHEMA_VERSION = "v1";
 
 export const editorCapabilities = {
+  authLogin: "auth.login",
+  authLoginSso: "auth.login.sso",
+  authLogout: "auth.logout",
   contextListJson: "context.list.json",
   contextUseJson: "context.use.json",
   contextDeleteJson: "context.delete.json",
