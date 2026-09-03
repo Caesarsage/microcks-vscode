@@ -73,7 +73,7 @@ flowchart LR
     subgraph Extension[Microcks VS Code Extension]
         UI --> Commands[Command Handlers]
         UI --> ServicesView[Services View]
-        UI --> TestsView[Tests View]
+        UI --> TestsView[Dry-Run Tests View]
         UI --> Inspector[Operation Inspector]
         Commands --> Executor[CLI Executor]
         ServicesView --> Executor
@@ -130,7 +130,7 @@ Examples include:
 - `microcks start --output json`
 - `microcks import <artifact> --output json`
 - `microcks service list --output json`
-- `microcks test list --output json`
+- `microcks service get --output json`
 
 ### Dry-run watch events
 
@@ -187,7 +187,7 @@ sequenceDiagram
     Target-->>Microcks: API responses
     Microcks-->>CLI: Test result
     CLI-->>VSCode: test-result event
-    VSCode->>VSCode: Update Services and Tests views
+    VSCode->>VSCode: Update Services and Dry-Run Tests views
 
     Developer->>VSCode: Stop watch
     VSCode->>CLI: SIGINT
@@ -229,20 +229,20 @@ sequenceDiagram
     Server-->>CLI: Services
     CLI-->>VSCode: Service JSON
 
-    VSCode->>CLI: test list --output json
-    CLI->>Server: Query tests
-    Server-->>CLI: Test results
-    CLI-->>VSCode: Test JSON
-
-    VSCode->>VSCode: Render Selected Server roots
+    VSCode->>VSCode: Render Selected Server root
 ```
 
-The selected CLI context backs the **Selected Server** roots in the Services
-and Tests views. A saved context is configuration, not proof of connectivity.
-Each tree starts in `checking` state and reports `reachable` only after its CLI
-query succeeds. Switching contexts updates both roots and the active-context
-status bar. Expanding a test run lazily fetches its operation and step details;
-the Tests view can also apply a CLI-side service filter.
+The selected CLI context backs the **Selected Server** root in the Services
+view. A saved context is configuration, not proof of connectivity. The tree
+starts in `checking` state and reports `reachable` only after its CLI query
+succeeds. Switching contexts updates the root and the active-context status bar.
+
+The **Dry-Run Tests** view is not context-backed. It renders only what a
+dry-run watch session streams back, so expanding a run reads details already
+held in memory rather than issuing a CLI query, and its service filter is
+applied client-side. Browsing test runs stored on a connected server is
+deferred — `microcks test list` targets `GET /api/tests`, which Microcks
+answers with HTTP 405; see "Deferred" in the README.
 
 ## State Model
 
