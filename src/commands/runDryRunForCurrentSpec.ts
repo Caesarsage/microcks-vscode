@@ -1,7 +1,9 @@
 import { spawn } from "child_process";
 import * as vscode from "vscode";
 import {
+  classifyMicrocksExitCode,
   containerDriverArgs,
+  DryRunEventType,
   editorCapabilities,
   parseDryRunWatchEvent,
   requireCliCapabilities,
@@ -279,6 +281,7 @@ function startDryRunProcess(
 ): ReturnType<typeof spawn> {
   const child = spawn(executable, args, { shell: false });
   let stdoutBuffer = "";
+  let reachedReady = false;
 
   child.stdout.on("data", (chunk: Buffer) => {
     const text = chunk.toString();
@@ -291,7 +294,8 @@ function startDryRunProcess(
     stdoutBuffer = lines.pop() ?? "";
     for (const line of lines) {
       if (line.trim()) {
-        handleDryRunEvent(line, output, options.context);
+        reachedReady ||=
+          handleDryRunEvent(line, output, options.context) === "ready";
       }
     }
   });
@@ -311,11 +315,15 @@ function startDryRunProcess(
       setActiveDryRunWatch(undefined);
     }
     if (options.watch) {
-      vscode.window.showInformationMessage(
-        signal
-          ? `Microcks dry-run watch stopped (${signal}).`
-          : `Microcks dry-run watch exited with code ${code}.`
-      );
+      if (signal || code === 0) {
+        vscode.window.showInformationMessage(
+          signal
+            ? `Microcks dry-run watch stopped (${signal}).`
+            : "Microcks dry-run watch stopped."
+        );
+      } else {
+        void showWatchFailure(code, reachedReady, output);
+      }
     } else if (code === 0) {
       vscode.window.showInformationMessage("Microcks dry-run passed.");
     } else {
@@ -326,6 +334,32 @@ function startDryRunProcess(
   });
 
   return child;
+}
+
+// A watch that dies before its "ready" event never got a container runtime, so
+// point at the driver setting rather than at the CLI's own exit code.
+async function showWatchFailure(
+  code: number | null,
+  reachedReady: boolean,
+  output: vscode.OutputChannel
+): Promise<void> {
+  const exit = `exit code ${code}`;
+  const message = reachedReady
+    ? `Microcks dry-run watch failed: ${classifyMicrocksExitCode(code).label} (${exit}).`
+    : `Microcks dry-run watch could not start its ephemeral Microcks container (${exit}). Check that your container runtime is running.`;
+  const actions = reachedReady
+    ? ["Show Output"]
+    : ["Show Output", "Change Container Driver"];
+
+  const choice = await vscode.window.showErrorMessage(message, ...actions);
+  if (choice === "Show Output") {
+    output.show(true);
+  } else if (choice === "Change Container Driver") {
+    await vscode.commands.executeCommand(
+      "workbench.action.openSettings",
+      "microcks.containerDriver"
+    );
+  }
 }
 
 function waitForDryRunProcess(
@@ -345,14 +379,14 @@ function handleDryRunEvent(
   line: string,
   output: vscode.OutputChannel,
   context: MicrocksCommandContext
-): void {
+): DryRunEventType | undefined {
   let event;
   try {
     event = parseDryRunWatchEvent(line);
   } catch (error) {
     output.appendLine(`Invalid dry-run event: ${(error as Error).message}`);
     output.appendLine(line);
-    return;
+    return undefined;
   }
 
   output.appendLine(`[${event.type}] ${event.message ?? event.service ?? ""}`.trim());
@@ -385,6 +419,7 @@ function handleDryRunEvent(
     default:
       break;
   }
+  return event.type;
 }
 
 function formatShellCommand(executable: string, args: string[]): string {
