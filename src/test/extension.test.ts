@@ -6,9 +6,11 @@ import {
   buildGetServiceArgs,
   buildListServicesArgs,
   classifyMicrocksExitCode,
+  containerDriverArgs,
   editorCapabilities,
   parseCapabilitiesDocument,
   parseDryRunWatchEvent,
+  resolveContainerDriver,
   resolveMicrocksCliPath,
   selectArchive,
 } from "../cli";
@@ -224,6 +226,27 @@ suite("Microcks CLI foundation", () => {
 
     assert.equal(resolved.executable, "/extension-storage/microcks");
     assert.equal(resolved.source, "managed");
+  });
+
+  test("passes an explicit container driver through to the CLI", () => {
+    const withDriver = (value?: string): vscode.WorkspaceConfiguration =>
+      ({
+        get: <T>(key: string): T | undefined =>
+          key === "containerDriver" ? (value as T) : undefined,
+      }) as unknown as vscode.WorkspaceConfiguration;
+
+    assert.equal(resolveContainerDriver(withDriver("podman")), "podman");
+    assert.equal(resolveContainerDriver(withDriver("docker")), "docker");
+    assert.equal(resolveContainerDriver(withDriver(undefined)), "auto");
+    assert.equal(resolveContainerDriver(withDriver("containerd")), "auto");
+
+    assert.deepEqual(containerDriverArgs("podman"), ["--driver", "podman"]);
+    assert.deepEqual(containerDriverArgs("docker"), ["--driver", "docker"]);
+    assert.deepEqual(
+      containerDriverArgs("auto"),
+      [],
+      "auto must leave runtime selection to the CLI"
+    );
   });
 
   test("builds shared CLI context arguments", () => {

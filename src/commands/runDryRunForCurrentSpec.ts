@@ -1,9 +1,11 @@
 import { spawn } from "child_process";
 import * as vscode from "vscode";
 import {
+  containerDriverArgs,
   editorCapabilities,
   parseDryRunWatchEvent,
   requireCliCapabilities,
+  resolveContainerDriver,
 } from "../cli";
 import { readArtifactMetadata } from "../utils/artifact";
 import { shellQuote } from "../utils/shell";
@@ -78,6 +80,7 @@ export function registerRunDryRunForCurrentSpecCommand(
         "--dry-run",
         "--artifact",
         artifactPath,
+        ...containerDriverArgs(resolveContainerDriver()),
       ];
       if (filteredOperations.length > 0) {
         args.push(
