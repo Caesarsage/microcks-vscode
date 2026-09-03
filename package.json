@@ -50,8 +50,9 @@
         },
         {
           "id": "microcksTests",
-          "name": "Tests",
-          "contextualTitle": "Microcks Tests"
+          "name": "Dry-Run Tests",
+          "icon": "media/microcks-icon.svg",
+          "contextualTitle": "Microcks Dry-Run Tests"
         }
       ]
     },
@@ -59,11 +60,6 @@
       {
         "command": "microcks.refreshServices",
         "title": "Microcks: Refresh Services",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "microcks.refreshTests",
-        "title": "Microcks: Refresh Tests",
         "icon": "$(refresh)"
       },
       {
@@ -189,24 +185,19 @@
           "group": "navigation@7"
         },
         {
-          "command": "microcks.refreshTests",
+          "command": "microcks.filterTests",
           "when": "view == microcksTests",
           "group": "navigation@1"
         },
         {
-          "command": "microcks.filterTests",
+          "command": "microcks.stopDryRunWatch",
           "when": "view == microcksTests",
           "group": "navigation@2"
         },
         {
-          "command": "microcks.switchContext",
+          "command": "microcks.clearDryRunSession",
           "when": "view == microcksTests",
           "group": "navigation@3"
-        },
-        {
-          "command": "microcks.openCliInstallation",
-          "when": "view == microcksTests",
-          "group": "navigation@4"
         }
       ],
       "view/item/context": [

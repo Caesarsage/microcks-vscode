@@ -15,10 +15,7 @@ import { registerImportCurrentFileCommand } from "./importCurrentFile";
 import { registerOpenInspectorCommand } from "./openInspector";
 import { registerOpenCliInstallationCommand } from "./openCliInstallation";
 import { registerOpenServiceCommand } from "./openService";
-import {
-  registerRefreshServicesCommand,
-  registerRefreshTestsCommand,
-} from "./refreshServices";
+import { registerRefreshServicesCommand } from "./refreshServices";
 import { registerRunDryRunForCurrentSpecCommand } from "./runDryRunForCurrentSpec";
 import { registerSetCliPathCommand } from "./setCliPath";
 import { registerSignOutContextCommand } from "./signOutContext";
@@ -41,7 +38,6 @@ export function registerMicrocksCommands(
 
   extensionContext.subscriptions.push(
     registerRefreshServicesCommand(commandContext),
-    registerRefreshTestsCommand(commandContext),
     registerStartLocalServerCommand(commandContext),
     registerConnectRemoteServerCommand(commandContext),
     registerDisconnectServerCommand(commandContext),

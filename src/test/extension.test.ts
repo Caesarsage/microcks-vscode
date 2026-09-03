@@ -4,9 +4,7 @@ import {
   buildBaseArgs,
   buildCapabilitiesArgs,
   buildGetServiceArgs,
-  buildGetTestArgs,
   buildListServicesArgs,
-  buildListTestsArgs,
   classifyMicrocksExitCode,
   editorCapabilities,
   parseCapabilitiesDocument,
@@ -30,7 +28,6 @@ suite("Microcks extension", () => {
     const commands = await vscode.commands.getCommands(true);
 
     assert.ok(commands.includes("microcks.refreshServices"));
-    assert.ok(commands.includes("microcks.refreshTests"));
     assert.ok(commands.includes("microcks.startLocalServer"));
     assert.ok(commands.includes("microcks.connectRemoteServer"));
     assert.ok(commands.includes("microcks.runDryRunForCurrentSpec"));
@@ -82,6 +79,15 @@ suite("Microcks tree state", () => {
     assert.equal((await provider.getChildren()).length, 1);
   });
 
+  test("offers a dry-run action while no session has started", async () => {
+    const provider = new TestsProvider();
+
+    const idle = await provider.getChildren();
+
+    assert.ok(idle.some((item) => item.label === "No dry-run session yet."));
+    assert.ok(idle.some((item) => item.label === "Run Dry-Run for API File"));
+  });
+
   test("retains dry-run test results after the session stops", async () => {
     const provider = new TestsProvider();
     provider.beginDryRunSession();
@@ -93,45 +99,35 @@ suite("Microcks tree state", () => {
     provider.markDryRunStopped();
 
     const roots = await provider.getChildren();
-    assert.equal(roots.length, 2);
-    const dryRunChildren = await provider.getChildren(roots[1]);
+    assert.equal(roots.length, 1);
+    assert.equal(roots[0].description, "stopped");
+    const dryRunChildren = await provider.getChildren(roots[0]);
     assert.ok(dryRunChildren.some((item) => item.label === "result-1"));
 
     provider.clearDryRunSession();
-    assert.equal((await provider.getChildren()).length, 1);
+    const cleared = await provider.getChildren();
+    assert.ok(cleared.some((item) => item.label === "No dry-run session yet."));
   });
 
-  test("loads full connected test details and operation steps on expansion", async () => {
+  test("expands dry-run operation and step details", async () => {
     const provider = new TestsProvider();
-    let detailRequests = 0;
-    provider.setConnectedDataSource({
-      listTests: async () => [{
-        id: "test-1",
-        serviceId: "Catalog API:1.0.0",
-        testNumber: 7,
+    provider.beginDryRunSession();
+    provider.recordDryRunResult({
+      id: "result-1",
+      serviceId: "Catalog API:1.0.0",
+      testNumber: 7,
+      success: false,
+      inProgress: false,
+      testCaseResults: [{
+        operationName: "GET /products",
         success: false,
-        inProgress: false,
-      }],
-      getTest: async (id) => {
-        detailRequests += 1;
-        return {
-          id,
-          serviceId: "Catalog API:1.0.0",
-          testNumber: 7,
+        elapsedTime: 42,
+        testStepResults: [{
+          requestName: "default",
           success: false,
-          inProgress: false,
-          testCaseResults: [{
-            operationName: "GET /products",
-            success: false,
-            elapsedTime: 42,
-            testStepResults: [{
-              requestName: "default",
-              success: false,
-              message: "price must be a number",
-            }],
-          }],
-        };
-      },
+          message: "price must be a number",
+        }],
+      }],
     });
 
     const [root] = await provider.getChildren();
@@ -144,39 +140,37 @@ suite("Microcks tree state", () => {
     assert.ok(operation);
     const steps = await provider.getChildren(operation);
     assert.ok(steps.some((item) => item.label === "default"));
-
-    await provider.getChildren(run);
-    assert.equal(detailRequests, 1, "full test details should be cached");
   });
 
-  test("filters connected tests by service through the CLI query", async () => {
+  test("filters dry-run results by service", async () => {
     const provider = new TestsProvider();
-    let requestedServiceId: string | undefined;
-    provider.setConnectedDataSource({
-      listTests: async (query) => {
-        requestedServiceId = query?.serviceId;
-        return [{
-          id: "test-1",
-          serviceId: "Catalog API:1.0.0",
-          success: true,
-          inProgress: false,
-        }];
-      },
-      getTest: async (id) => ({
-        id,
-        success: true,
-        inProgress: false,
-      }),
+    provider.beginDryRunSession();
+    provider.recordDryRunResult({
+      id: "result-1",
+      serviceId: "Catalog API:1.0.0",
+      testNumber: 1,
+      success: true,
+      inProgress: false,
+    });
+    provider.recordDryRunResult({
+      id: "result-2",
+      serviceId: "Orders API:1.0.0",
+      testNumber: 2,
+      success: false,
+      inProgress: false,
     });
 
-    let [root] = await provider.getChildren();
-    await provider.getChildren(root);
-    assert.deepEqual(provider.getKnownServiceIds(), ["Catalog API:1.0.0"]);
+    assert.deepEqual(provider.getKnownServiceIds(), [
+      "Catalog API:1.0.0",
+      "Orders API:1.0.0",
+    ]);
 
     provider.setServiceFilter("Catalog API:1.0.0");
-    [root] = await provider.getChildren();
+    const [root] = await provider.getChildren();
     const filtered = await provider.getChildren(root);
-    assert.equal(requestedServiceId, "Catalog API:1.0.0");
+
+    assert.ok(filtered.some((item) => item.label === "Catalog API:1.0.0 · #1"));
+    assert.ok(!filtered.some((item) => item.label === "Orders API:1.0.0 · #2"));
     assert.ok(filtered.some((item) => item.label === "Clear Test Filter"));
   });
 });
@@ -282,28 +276,6 @@ suite("Microcks CLI foundation", () => {
       "service",
       "get",
       "Catalog API:1.0.0",
-      "--output",
-      "json",
-    ]);
-  });
-
-  test("builds test JSON command arguments", () => {
-    assert.deepEqual(buildListTestsArgs({ serviceId: "svc-1", size: 10 }), [
-      "test",
-      "list",
-      "--page",
-      "0",
-      "--size",
-      "10",
-      "--output",
-      "json",
-      "--serviceId",
-      "svc-1",
-    ]);
-    assert.deepEqual(buildGetTestArgs("test-1"), [
-      "test",
-      "get",
-      "test-1",
       "--output",
       "json",
     ]);

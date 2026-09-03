@@ -9,12 +9,3 @@ export function registerRefreshServicesCommand(
     context.refresh
   );
 }
-
-export function registerRefreshTestsCommand(
-  context: MicrocksCommandContext
-): vscode.Disposable {
-  return vscode.commands.registerCommand(
-    "microcks.refreshTests",
-    context.refresh
-  );
-}

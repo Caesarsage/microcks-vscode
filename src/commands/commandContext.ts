@@ -6,11 +6,7 @@ import {
   resolveMicrocksCliPath,
 } from "../cli";
 import { defaultConfigPath } from "../config/configReader";
-import {
-  CliServicesDataSource,
-  CliTestsDataSource,
-  ServicesTarget,
-} from "../services";
+import { CliServicesDataSource, ServicesTarget } from "../services";
 import { ServicesProvider } from "../views/services";
 import { TestsProvider } from "../views/tests";
 
@@ -81,14 +77,6 @@ export function createMicrocksCommandContext(
         ? servicesTargetForContext(current.name, current.server)
         : undefined;
       provider.setConnectedTarget(target);
-      testsProvider.setConnectedDataSource(
-        current
-          ? new CliTestsDataSource({
-              ...cliOptions(),
-              contextName: current.name,
-            })
-          : undefined
-      );
       if (current) {
         statusBar.text = `$(server) Microcks: ${current.name}`;
         statusBar.tooltip =
@@ -99,7 +87,6 @@ export function createMicrocksCommandContext(
       }
     } catch (error) {
       provider.setConnectedTarget(undefined, error as Error);
-      testsProvider.setConnectedDataSource(undefined, error as Error);
       statusBar.hide();
     }
   };
