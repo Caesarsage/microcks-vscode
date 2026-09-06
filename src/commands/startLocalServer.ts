@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { startLocalInstance } from "../cli";
+import { resolveContainerDriver, startLocalInstance } from "../cli";
 import { MicrocksCommandContext } from "./commandContext";
 
 export function registerStartLocalServerCommand(
@@ -16,7 +16,12 @@ export function registerStartLocalServerCommand(
           location: vscode.ProgressLocation.Notification,
           title: "Starting local Microcks...",
         },
-        () => startLocalInstance(context.cliOptions(), (text) => output.append(text))
+        () =>
+          startLocalInstance(
+            context.cliOptions(),
+            resolveContainerDriver(),
+            (text) => output.append(text)
+          )
       );
       await context.refresh();
       vscode.window.showInformationMessage(

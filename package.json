@@ -50,8 +50,9 @@
         },
         {
           "id": "microcksTests",
-          "name": "Tests",
-          "contextualTitle": "Microcks Tests"
+          "name": "Dry-Run Tests",
+          "icon": "media/microcks-icon.svg",
+          "contextualTitle": "Microcks Dry-Run Tests"
         }
       ]
     },
@@ -59,11 +60,6 @@
       {
         "command": "microcks.refreshServices",
         "title": "Microcks: Refresh Services",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "microcks.refreshTests",
-        "title": "Microcks: Refresh Tests",
         "icon": "$(refresh)"
       },
       {
@@ -189,24 +185,19 @@
           "group": "navigation@7"
         },
         {
-          "command": "microcks.refreshTests",
+          "command": "microcks.filterTests",
           "when": "view == microcksTests",
           "group": "navigation@1"
         },
         {
-          "command": "microcks.filterTests",
+          "command": "microcks.stopDryRunWatch",
           "when": "view == microcksTests",
           "group": "navigation@2"
         },
         {
-          "command": "microcks.switchContext",
+          "command": "microcks.clearDryRunSession",
           "when": "view == microcksTests",
           "group": "navigation@3"
-        },
-        {
-          "command": "microcks.openCliInstallation",
-          "when": "view == microcksTests",
-          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -244,6 +235,21 @@
           "type": "string",
           "default": "",
           "description": "Path to a Microcks CLI executable. If empty, the extension uses its managed CLI when installed, then microcks on PATH."
+        },
+        "microcks.containerDriver": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "docker",
+            "podman"
+          ],
+          "enumDescriptions": [
+            "Let the Microcks CLI choose. It auto-detects a runtime for dry-run tests and falls back to Docker for Start Local Server.",
+            "Always pass --driver docker.",
+            "Always pass --driver podman."
+          ],
+          "default": "auto",
+          "description": "Container runtime used for dry-run tests and Start Local Server. Choose podman if Docker is installed but you run Podman, since the CLI only auto-detects Podman when Docker is absent."
         }
       }
     }

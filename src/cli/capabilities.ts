@@ -13,8 +13,6 @@ export const editorCapabilities = {
   artifactImportFileJson: "artifact.import.file.json",
   serviceListJson: "service.list.json",
   serviceGetJson: "service.get.json",
-  testListJson: "test.list.json",
-  testGetJson: "test.get.json",
   dryRunWatchEventsJson: "test.dry-run.watch.events.json",
 } as const;
 

@@ -19,6 +19,8 @@ export interface ServiceDetail {
   messagesMap?: Record<string, unknown[]>;
 }
 
+// Test result shapes are still consumed from dry-run watch events. Server-side
+// test browsing is deferred until the CLI can list a service's test results.
 export interface TestResultSummary {
   id: string;
   version?: number;
@@ -90,49 +92,6 @@ export function buildGetServiceArgs(serviceRef: string): string[] {
     "service",
     "get",
     serviceRef,
-    "--output",
-    "json",
-  ];
-}
-
-export async function listTests(
-  options: CliJsonCommandOptions,
-  query: { readonly serviceId?: string; readonly page?: number; readonly size?: number } = {}
-): Promise<TestResultSummary[]> {
-  return executeJson<TestResultSummary[]>(options, buildListTestsArgs(query));
-}
-
-export function buildListTestsArgs(
-  query: { readonly serviceId?: string; readonly page?: number; readonly size?: number } = {}
-): string[] {
-  const args = [
-    "test",
-    "list",
-    "--page",
-    String(query.page ?? 0),
-    "--size",
-    String(query.size ?? 50),
-    "--output",
-    "json",
-  ];
-  if (query.serviceId) {
-    args.push("--serviceId", query.serviceId);
-  }
-  return args;
-}
-
-export async function getTest(
-  options: CliJsonCommandOptions,
-  testResultId: string
-): Promise<TestResult> {
-  return executeJson<TestResult>(options, buildGetTestArgs(testResultId));
-}
-
-export function buildGetTestArgs(testResultId: string): string[] {
-  return [
-    "test",
-    "get",
-    testResultId,
     "--output",
     "json",
   ];

@@ -12,11 +12,11 @@ export function registerFilterTestsCommand(
     const serviceIds = provider.getKnownServiceIds();
     if (serviceIds.length === 0) {
       const action = await vscode.window.showInformationMessage(
-        "No services are available from the loaded test runs.",
-        "Refresh Tests"
+        "No dry-run results are loaded yet.",
+        "Run Dry-Run for API File"
       );
-      if (action === "Refresh Tests") {
-        await vscode.commands.executeCommand("microcks.refreshTests");
+      if (action === "Run Dry-Run for API File") {
+        await vscode.commands.executeCommand("microcks.runDryRunForCurrentSpec");
       }
       return;
     }

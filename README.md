@@ -18,11 +18,11 @@ It currently ships:
 
 - An **Activity Bar** entry that opens the Microcks sidebar.
 - A **Services** tree view backed by Microcks CLI JSON commands that lets you expand each service into its operations.
-- A **Tests** tree with run, operation, and step-level results plus service filtering.
+- A **Dry-Run Tests** tree with run, operation, and step-level results plus service filtering.
 - A **Context Manager** backed by CLI context and authentication contracts. The extension never reads or stores CLI credentials.
 - A **Refresh** action on the view title bar.
 - **Start Local Microcks**, **Sign In to Remote Server**, **Import Current API File**, and **Run Dry-Run for API File** commands backed by the Microcks CLI.
-- Separate **Selected Server** and **Dry-Run Session** roots in the Services and Tests views.
+- Separate **Selected Server** and **Dry-Run Session** roots in the Services view.
 - An **Open Service in Browser** context action on each service.
 - An **Operation Inspector** webview with mock invocation, examples, and compare support.
 
@@ -68,14 +68,39 @@ release preparation, automated publishing, recovery, and verification.
 - [x] Connect to remote Microcks through CLI contexts
 - [x] Run one-shot and watched dry-run tests
 - [x] Operation Inspector with mock invocation, examples, and compare support
-- [x] Tests tree navigation, lazy result details, and service filtering
+- [x] Dry-run tests tree navigation, result details, and service filtering
 - [x] Authentication and context management UX
+- [ ] Browse test runs stored on a connected server (see [Deferred](#deferred))
 - [ ] Add richer mock management actions
 - [ ] Add Explorer and editor-title integration for supported API artifacts
 - [ ] Publish marketplace screenshots for sidebar, diagnostics, command palette,
   dry-run execution, and Inspector flows
 - [ ] Explore AI-assisted API testing workflows after the core extension
   experience is stable
+
+## Deferred
+
+**Browsing test runs from a connected server** is deferred to a future release.
+
+The extension previously showed a **Selected Server** root in its Tests view,
+backed by `microcks test list --output json`. That command cannot work against a
+Microcks server today: it requests `GET /api/tests`, but the server only exposes
+`GET /api/tests/service/{serviceId}` for listing and reserves `POST /api/tests`
+for creating a run, so every call returns HTTP 405. The CLI's own tests mock
+`/api/tests`, which kept the mismatch from surfacing before release 1.0.3.
+
+Listing also has no unfiltered form to fall back on: the server can only return
+tests one service at a time, so the tree's default "all services" load has no
+endpoint behind it at all.
+
+Rather than ship a view that always renders an error, the connected root and the
+`test.list.json` / `test.get.json` capability requirements were removed. The
+**Dry-Run Tests** view keeps every result produced by a dry-run session, which
+comes from the CLI event stream and is unaffected.
+
+Reintroducing it needs a CLI change first — `test list` calling the per-service
+endpoint and requiring a service id. `microcks test get` already works and can
+stay as is.
 
 ## Marketplace media checklist
 
@@ -85,7 +110,7 @@ only describe it. Useful screenshots include:
 - Microcks Activity Bar and Services tree
 - Problems panel or diagnostics surfaced from a contract test
 - Command Palette entries for start, connect, import, and dry-run
-- Dry-run output and Tests tree state
+- Dry-run output and Dry-Run Tests tree state
 - Operation Inspector request, response, examples, and compare flow
 
 ## Test Locally
@@ -118,7 +143,7 @@ Expected result without any Microcks server:
 The extension can download the latest stable Microcks CLI release for the
 current operating system. Use any of these entry points:
 
-- Click the package icon in the Services or Tests view header.
+- Click the package icon in the Services view header.
 - Run **Microcks: Install or Update CLI** from the Command Palette.
 - Use **Install Microcks CLI** or **Update Microcks CLI** from a recovery row
   when the CLI is missing or incompatible.
@@ -181,8 +206,8 @@ notification, and the CLI tears the temporary container down.
 
 In **Watch and browse ephemeral Microcks** mode, it runs
 `microcks test --dry-run --watch --output json` and consumes the CLI's
-structured event stream. The Services and Tests trees attach to the ephemeral
-server and retain stale results after it stops. Use
+structured event stream. The Services and Dry-Run Tests trees attach to the
+ephemeral server and retain stale results after it stops. Use
 `Microcks: Stop Dry-Run Watch` when you are done.
 
 This path depends on a `microcks` CLI that includes the D1 dry-run feature.
@@ -212,12 +237,13 @@ Use this when your team already has a shared Microcks instance.
 2. Enter the remote Microcks URL and an optional context name.
 3. Choose browser SSO or no authentication for an unsecured local/dev server.
 4. The CLI creates/selects its context, and the extension refreshes the
-   Services and Tests views.
+   Services view.
 
 Use **Microcks: Switch Context** to select saved contexts, start a local server,
 sign in to another server, sign out while keeping a profile, or remove the
 current profile. Selecting a context does not imply that its server is online;
-the trees report `checking`, `reachable`, or `unreachable` from real requests.
+the Services tree reports `checking`, `reachable`, or `unreachable` from real
+requests.
 
 ### Full Server-Backed Manual Test
 
@@ -264,8 +290,6 @@ CLI and connected Microcks server required:
 
 - loading imported services with `microcks service list --output json`
 - expanding service operations with `microcks service get --output json`
-- loading and filtering test runs with `microcks test list --output json`
-- expanding operation and step details with `microcks test get --output json`
 - invoking mocks
 - loading Microcks examples in the Inspector
 - comparing mock responses with a real service
@@ -296,7 +320,6 @@ microcks-vscode/
       mockClient.ts         # builds and invokes user-facing mock URLs
     services/
       serviceDataSource.ts  # CLI-backed Services tree data source
-      testDataSource.ts     # CLI-backed Tests tree data source
     utils/
       artifact.ts           # extracts API metadata and operations from spec files
       json.ts
@@ -309,7 +332,7 @@ microcks-vscode/
         servicesProvider.ts # Services TreeDataProvider
         nodes.ts            # Services tree item nodes
       tests/
-        testsProvider.ts    # connected and dry-run Tests TreeDataProvider
+        testsProvider.ts    # dry-run Tests TreeDataProvider
         nodes.ts            # Tests tree item nodes
     webviews/
       inspectorPanel.ts     # Operation Inspector webview
@@ -320,5 +343,13 @@ microcks-vscode/
 - `microcks.cliPath` — path to the Microcks CLI executable used for service
   and test metadata and all Microcks control-plane workflows. A configured path
   takes precedence over the extension-managed CLI and `microcks` on `PATH`.
+- `microcks.containerDriver` — container runtime for dry-run tests and **Start
+  Local Server**: `auto` (default), `docker`, or `podman`. Anything but `auto`
+  is passed to the CLI as `--driver`.
+
+  Set this to `podman` if you run Podman on a machine that also has Docker
+  installed. The CLI only auto-detects Podman when Docker is *absent*, so with
+  both present it picks Docker, and a dry-run against a stopped Docker daemon
+  fails while the container is being created.
 - `MICROCKS_CONFIG_DIR` — config directory passed through to the CLI. Defaults
   to `~/.config/microcks`.

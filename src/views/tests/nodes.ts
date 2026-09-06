@@ -15,27 +15,18 @@ export type TestsTreeNode =
   | TestActionNode;
 
 export class TestsRootNode extends vscode.TreeItem {
-  constructor(
-    label: string,
-    readonly source: "connected" | "dry-run",
-    description?: string
-  ) {
+  constructor(label: string, description?: string) {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
-    this.contextValue = `tests-root-${source}`;
-    this.iconPath = new vscode.ThemeIcon(
-      source === "connected" ? "server" : "beaker"
-    );
+    this.contextValue = "tests-root-dry-run";
+    this.iconPath = new vscode.ThemeIcon("beaker");
     this.description = description;
   }
 }
 
 export class TestResultNode extends vscode.TreeItem {
-  constructor(
-    readonly result: TestResultSummary | TestResult,
-    readonly source: "connected" | "dry-run"
-  ) {
+  constructor(readonly result: TestResult) {
     super(testLabel(result), vscode.TreeItemCollapsibleState.Collapsed);
-    this.contextValue = `test-result-${source}`;
+    this.contextValue = "test-result-dry-run";
     this.iconPath = new vscode.ThemeIcon(
       result.inProgress ? "sync~spin" : result.success ? "pass" : "error"
     );
