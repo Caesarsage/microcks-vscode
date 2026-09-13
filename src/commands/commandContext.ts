@@ -1,8 +1,11 @@
 import * as vscode from "vscode";
 import {
   CliJsonCommandOptions,
+  CliResolution,
+  isWorkspaceTrusted,
   listContexts,
   MANAGED_CLI_STATE_KEY,
+  MicrocksWorkspaceTrustError,
   resolveMicrocksCliPath,
 } from "../cli";
 import { defaultConfigPath } from "../config/configReader";
@@ -19,6 +22,7 @@ export interface MicrocksCommandContext {
   readonly targetForUrl: (serverUrl: string) => ServicesTarget;
   readonly refresh: () => Promise<void>;
   readonly cliCommand: () => string;
+  readonly cliResolution: () => CliResolution;
 }
 
 export function createMicrocksCommandContext(
@@ -33,11 +37,13 @@ export function createMicrocksCommandContext(
   statusBar.command = "microcks.switchContext";
   extensionContext.subscriptions.push(statusBar);
 
-  const resolveCliCommand = (): string =>
+  const resolveCli = (): CliResolution =>
     resolveMicrocksCliPath(
       undefined,
       extensionContext.globalState.get<string>(MANAGED_CLI_STATE_KEY)
-    ).executable;
+    );
+
+  const resolveCliCommand = (): string => resolveCli().executable;
 
   const cliOptions = (): CliJsonCommandOptions => ({
     executable: resolveCliCommand(),
@@ -70,6 +76,12 @@ export function createMicrocksCommandContext(
     });
 
   const refresh = async (): Promise<void> => {
+    if (!isWorkspaceTrusted()) {
+      const restricted = new MicrocksWorkspaceTrustError();
+      provider.setConnectedTarget(undefined, restricted);
+      statusBar.hide();
+      return;
+    }
     try {
       const contexts = await listContexts(cliOptions());
       const current = contexts.find((item) => item.current);
@@ -100,11 +112,6 @@ export function createMicrocksCommandContext(
     targetForUrl,
     refresh,
     cliCommand: resolveCliCommand,
+    cliResolution: resolveCli,
   };
-}
-
-export function settingsTarget(): vscode.ConfigurationTarget {
-  return vscode.workspace.workspaceFolders?.length
-    ? vscode.ConfigurationTarget.Workspace
-    : vscode.ConfigurationTarget.Global;
 }

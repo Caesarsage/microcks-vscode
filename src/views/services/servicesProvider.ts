@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import {
   MicrocksCliReadinessError,
   MicrocksService,
+  MicrocksWorkspaceTrustError,
   ServiceDetail,
 } from "../../cli";
 import { ServicesTarget } from "../../services";
@@ -112,6 +113,9 @@ export class ServicesProvider implements vscode.TreeDataProvider<ServicesTreeNod
 
     if (element instanceof ConnectedServerRootNode) {
       if (!this.connectedTarget) {
+        if (this.connectedError instanceof MicrocksWorkspaceTrustError) {
+          return restrictedWorkspaceNodes(this.connectedError);
+        }
         if (this.connectedError instanceof MicrocksCliReadinessError) {
           return cliRecoveryNodes(this.connectedError);
         }
@@ -255,6 +259,9 @@ function connectedRootNode(
       status === "unreachable" ? "warning" : "server-environment"
     );
   }
+  if (error instanceof MicrocksWorkspaceTrustError) {
+    return new ConnectedServerRootNode("Microcks", "restricted mode", "shield");
+  }
   if (error instanceof MicrocksCliReadinessError) {
     return new ConnectedServerRootNode("Microcks CLI", error.reason, "terminal");
   }
@@ -335,6 +342,20 @@ function serverRecoveryNodes(error: Error): ServicesTreeNode[] {
       "microcks.runDryRunForCurrentSpec",
       "beaker",
       "Run without relying on a long-running Microcks server"
+    ),
+  ];
+}
+
+function restrictedWorkspaceNodes(
+  error: MicrocksWorkspaceTrustError
+): ServicesTreeNode[] {
+  return [
+    new MessageNode("This folder is not trusted.", error.message),
+    new ActionNode(
+      "Manage Workspace Trust",
+      "workbench.trust.manage",
+      "shield",
+      "Trust this folder to let Microcks run the Microcks CLI"
     ),
   ];
 }

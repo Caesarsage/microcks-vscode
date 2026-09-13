@@ -34,6 +34,20 @@ The extension resolves the CLI in this order:
 2. A compatible CLI installed into extension-managed storage.
 3. `microcks` available on `PATH`.
 
+`microcks.cliPath` selects a program the extension executes, so it is declared
+`machine` scoped and listed under
+`capabilities.untrustedWorkspaces.restrictedConfigurations`. `cliResolver`
+reads it through `WorkspaceConfiguration.inspect` and uses the global value
+only, so a path written by an opened repository never reaches `spawn` even if a
+host merged it. A workspace or folder value that was dropped is reported back
+to the user instead of being silently discarded.
+
+Every CLI invocation goes through `executeMicrocksCli`, which refuses to spawn
+while the window is in restricted mode; the dry-run watch process, which spawns
+the CLI directly, repeats the same check. `MicrocksWorkspaceTrustError` drives
+the restricted-mode rows in both trees, and
+`workspace.onDidGrantWorkspaceTrust` refreshes them once the folder is trusted.
+
 The extension checks `microcks capabilities --output json` before relying on a
 machine-readable contract. A missing or incompatible CLI does not prevent the
 extension from activating; the views remain available with install, update, and

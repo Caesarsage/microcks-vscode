@@ -343,6 +343,10 @@ microcks-vscode/
 - `microcks.cliPath` — path to the Microcks CLI executable used for service
   and test metadata and all Microcks control-plane workflows. A configured path
   takes precedence over the extension-managed CLI and `microcks` on `PATH`.
+  The setting is **machine scoped**: it is read from your User (or Remote)
+  settings only. A value placed in a workspace or folder `.vscode/settings.json`
+  is ignored, and the extension warns you when it finds one. Use **Microcks: Set
+  CLI Path**, which always writes to your user settings.
 - `microcks.containerDriver` — container runtime for dry-run tests and **Start
   Local Server**: `auto` (default), `docker`, or `podman`. Anything but `auto`
   is passed to the CLI as `--driver`.
@@ -353,3 +357,15 @@ microcks-vscode/
   fails while the container is being created.
 - `MICROCKS_CONFIG_DIR` — config directory passed through to the CLI. Defaults
   to `~/.config/microcks`.
+
+## Workspace trust
+
+The extension runs the Microcks CLI as a child process against files in the open
+folder, so it declares limited support for untrusted workspaces:
+
+- In a **restricted** workspace the extension activates but never starts the
+  CLI. The Services and Tests views explain this and offer **Manage Workspace
+  Trust**.
+- `microcks.cliPath` is listed as a restricted configuration, so an untrusted
+  folder cannot influence which executable would be run.
+- Trusting the folder refreshes both views automatically.

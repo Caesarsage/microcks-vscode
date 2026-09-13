@@ -30,6 +30,15 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Microcks runs the Microcks CLI as a child process against the files in the open folder. In a restricted workspace the extension never starts the CLI, so browsing services, importing artifacts, and dry-run tests stay disabled until you trust the folder.",
+      "restrictedConfigurations": [
+        "microcks.cliPath"
+      ]
+    }
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -234,7 +243,8 @@
         "microcks.cliPath": {
           "type": "string",
           "default": "",
-          "description": "Path to a Microcks CLI executable. If empty, the extension uses its managed CLI when installed, then microcks on PATH."
+          "scope": "machine",
+          "markdownDescription": "Path to a Microcks CLI executable. If empty, the extension uses its managed CLI when installed, then `microcks` on PATH.\n\nThis setting selects a program the extension runs, so it is machine scoped: it can only be set in User or Remote settings and is ignored when a workspace or folder `.vscode/settings.json` tries to set it."
         },
         "microcks.containerDriver": {
           "type": "string",

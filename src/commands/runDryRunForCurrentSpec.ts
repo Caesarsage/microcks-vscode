@@ -1,10 +1,12 @@
 import { spawn } from "child_process";
 import * as vscode from "vscode";
 import {
+  assertWorkspaceTrusted,
   classifyMicrocksExitCode,
   containerDriverArgs,
   DryRunEventType,
   editorCapabilities,
+  ensureWorkspaceTrusted,
   parseDryRunWatchEvent,
   requireCliCapabilities,
   resolveContainerDriver,
@@ -20,6 +22,9 @@ export function registerRunDryRunForCurrentSpecCommand(
   return vscode.commands.registerCommand(
     "microcks.runDryRunForCurrentSpec",
     async () => {
+      if (!(await ensureWorkspaceTrusted("Running a Microcks dry-run"))) {
+        return;
+      }
       const artifactPath = await pickArtifactPath();
       if (!artifactPath) {
         return;
@@ -279,6 +284,8 @@ function startDryRunProcess(
   output: vscode.OutputChannel,
   options: { watch: boolean; context: MicrocksCommandContext }
 ): ReturnType<typeof spawn> {
+  // Spawns directly instead of going through executeMicrocksCli.
+  assertWorkspaceTrusted();
   const child = spawn(executable, args, { shell: false });
   let stdoutBuffer = "";
   let reachedReady = false;
