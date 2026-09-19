@@ -46,9 +46,7 @@ export function registerOpenCliInstallationCommand(
         );
         await context.refresh();
         vscode.window.showInformationMessage(
-          `Microcks CLI ${result.version} installed${
-            result.verified ? " and checksum verified" : ""
-          }.`
+          `Microcks CLI ${result.version} installed and checksum verified.`
         );
       } catch (error) {
         const choice = await vscode.window.showErrorMessage(

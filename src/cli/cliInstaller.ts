@@ -6,25 +6,23 @@ import { promisify } from "util";
 import * as vscode from "vscode";
 
 const execFileAsync = promisify(execFile);
-const LATEST_RELEASE_URL =
-  "https://api.github.com/repos/microcks/microcks-cli/releases/latest";
+const RELEASES_BASE = "https://github.com/microcks/microcks-cli/releases";
+
+// Deliberately not api.github.com. Unauthenticated API calls are capped at 60
+// per hour per IP, which anyone behind corporate NAT shares with their whole
+// office, and the failure is an opaque 403. The plain releases/latest URL
+// redirects to the newest stable tag with no quota and no token, and
+// checksums.txt doubles as the asset inventory.
+const LATEST_RELEASE_URL = `${RELEASES_BASE}/latest`;
 
 interface ReleaseAsset {
   readonly name: string;
   readonly browser_download_url: string;
 }
 
-interface ReleaseDocument {
-  readonly tag_name: string;
-  readonly draft: boolean;
-  readonly prerelease: boolean;
-  readonly assets: ReleaseAsset[];
-}
-
 export interface ManagedCliInstallResult {
   readonly executable: string;
   readonly version: string;
-  readonly verified: boolean;
 }
 
 export async function installLatestStableCli(
@@ -32,19 +30,17 @@ export async function installLatestStableCli(
   onProgress?: (message: string) => void
 ): Promise<ManagedCliInstallResult> {
   onProgress?.("Finding the latest stable Microcks CLI release...");
-  const release = await fetchJson<ReleaseDocument>(LATEST_RELEASE_URL);
-  if (release.draft || release.prerelease) {
-    throw new Error("GitHub did not return a stable Microcks CLI release.");
-  }
+  const tag = await resolveLatestTag();
 
-  const asset = selectArchive(release.assets, process.platform, process.arch);
-  const checksumAsset = release.assets.find(
-    (candidate) => candidate.name === "checksums.txt"
-  );
+  onProgress?.("Reading release checksums...");
+  const checksums = await fetchText(assetUrl(tag, "checksums.txt"));
+  const assets = listAssets(tag, checksums);
+
+  const asset = selectArchive(assets, process.platform, process.arch);
   const installDirectory = path.join(
     storageUri.fsPath,
     "cli",
-    release.tag_name.replace(/^v/, "")
+    tag.replace(/^v/, "")
   );
   const archivePath = path.join(storageUri.fsPath, asset.name);
 
@@ -56,13 +52,8 @@ export async function installLatestStableCli(
   const archive = await fetchBytes(asset.browser_download_url);
   await writeFile(archivePath, archive);
 
-  let verified = false;
-  if (checksumAsset) {
-    onProgress?.("Verifying release checksum...");
-    const checksums = await fetchText(checksumAsset.browser_download_url);
-    verifyChecksum(asset.name, archive, checksums);
-    verified = true;
-  }
+  onProgress?.("Verifying release checksum...");
+  verifyChecksum(asset.name, archive, checksums);
 
   onProgress?.("Installing the Microcks CLI...");
   try {
@@ -83,7 +74,45 @@ export async function installLatestStableCli(
   if (process.platform !== "win32") {
     await chmod(executable, 0o755);
   }
-  return { executable, version: release.tag_name, verified };
+  return { executable, version: tag };
+}
+
+function assetUrl(tag: string, name: string): string {
+  return `${RELEASES_BASE}/download/${encodeURIComponent(tag)}/${name}`;
+}
+
+async function resolveLatestTag(): Promise<string> {
+  const response = await fetch(LATEST_RELEASE_URL, {
+    headers: { "User-Agent": "microcks-vscode" },
+    redirect: "follow",
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Could not reach ${LATEST_RELEASE_URL} (HTTP ${response.status}).`
+    );
+  }
+
+  const tag = decodeURIComponent(new URL(response.url).pathname.split("/").pop() ?? "");
+  if (!tag || tag === "latest") {
+    throw new Error(
+      `${LATEST_RELEASE_URL} did not redirect to a release tag (landed on ${response.url}).`
+    );
+  }
+  return tag;
+}
+
+function listAssets(tag: string, checksumDocument: string): ReleaseAsset[] {
+  const assets = checksumDocument
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(/\s+/))
+    .filter((parts) => parts.length >= 2)
+    .map((parts) => parts.at(-1)!.replace(/^\*/, ""))
+    .map((name) => ({ name, browser_download_url: assetUrl(tag, name) }));
+
+  if (assets.length === 0) {
+    throw new Error(`checksums.txt for ${tag} listed no release assets.`);
+  }
+  return assets;
 }
 
 export function selectArchive(
@@ -172,10 +201,6 @@ async function findFile(directory: string, name: string): Promise<string | undef
     }
   }
   return undefined;
-}
-
-async function fetchJson<T>(url: string): Promise<T> {
-  return JSON.parse(await fetchText(url)) as T;
 }
 
 async function fetchText(url: string): Promise<string> {
