@@ -10,5 +10,6 @@ examples/**
 esbuild.js
 eslint.config.mjs
 .vscode-test.mjs
+scripts/**
 .github/**
 .gitignore

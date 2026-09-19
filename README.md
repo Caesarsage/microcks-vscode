@@ -345,8 +345,8 @@ microcks-vscode/
   takes precedence over the extension-managed CLI and `microcks` on `PATH`.
   The setting is **machine scoped**: it is read from your User (or Remote)
   settings only. A value placed in a workspace or folder `.vscode/settings.json`
-  is ignored, and the extension warns you when it finds one. Use **Microcks: Set
-  CLI Path**, which always writes to your user settings.
+  is filtered out by VS Code, which flags it in the settings editor. Use
+  **Microcks: Set CLI Path**, which always writes to your user settings.
 - `microcks.containerDriver` — container runtime for dry-run tests and **Start
   Local Server**: `auto` (default), `docker`, or `podman`. Anything but `auto`
   is passed to the CLI as `--driver`.
@@ -364,8 +364,9 @@ The extension runs the Microcks CLI as a child process against files in the open
 folder, so it declares limited support for untrusted workspaces:
 
 - In a **restricted** workspace the extension activates but never starts the
-  CLI. The Services and Tests views explain this and offer **Manage Workspace
-  Trust**.
+  CLI. The Services view explains this and offers **Manage Workspace Trust**;
+  the Dry-Run Tests view has no CLI-backed state to show, and its **Run Dry-Run
+  for API File** action asks for trust before doing anything.
 - `microcks.cliPath` is listed as a restricted configuration, so an untrusted
   folder cannot influence which executable would be run.
-- Trusting the folder refreshes both views automatically.
+- Trusting the folder refreshes the Services view automatically.

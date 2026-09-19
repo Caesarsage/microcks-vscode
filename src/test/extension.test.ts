@@ -10,7 +10,6 @@ import {
   containerDriverArgs,
   editorCapabilities,
   parseCapabilitiesDocument,
-  MicrocksWorkspaceTrustError,
   parseDryRunWatchEvent,
   readConfiguredCliPath,
   resolveContainerDriver,
@@ -248,7 +247,6 @@ suite("Microcks CLI foundation", () => {
 
     assert.equal(resolved.executable, "microcks");
     assert.equal(resolved.source, "path");
-    assert.equal(resolved.ignoredWorkspaceValue, "/tmp/attacker/payload.sh");
   });
 
   test("ignores a CLI path coming from folder settings", () => {
@@ -259,7 +257,6 @@ suite("Microcks CLI foundation", () => {
 
     assert.equal(resolved.executable, "/extension-storage/microcks");
     assert.equal(resolved.source, "managed");
-    assert.equal(resolved.ignoredWorkspaceValue, "./.vscode/payload.sh");
   });
 
   test("keeps the user CLI path when a workspace tries to override it", () => {
@@ -272,7 +269,6 @@ suite("Microcks CLI foundation", () => {
 
     assert.equal(resolved.executable, "/opt/microcks/bin/microcks");
     assert.equal(resolved.source, "setting");
-    assert.equal(resolved.ignoredWorkspaceValue, "/tmp/attacker/payload.sh");
   });
 
   test("reads the CLI path from user settings only", () => {
@@ -283,8 +279,7 @@ suite("Microcks CLI foundation", () => {
       })
     );
 
-    assert.equal(configured.value, "/opt/microcks/bin/microcks");
-    assert.equal(configured.ignoredWorkspaceValue, "/tmp/attacker/payload.sh");
+    assert.equal(configured, "/opt/microcks/bin/microcks");
   });
 
   test("declares microcks.cliPath as a machine scoped, trust restricted setting", () => {
@@ -337,15 +332,15 @@ suite("Microcks CLI foundation", () => {
     assert.equal(resolved.source, "path");
   });
 
-  test("refuses to run the CLI while the workspace is restricted", async () => {
-    if (vscode.workspace.isTrusted) {
-      assert.doesNotThrow(() => assertWorkspaceTrusted());
-      return;
-    }
-    assert.throws(
-      () => assertWorkspaceTrusted(),
-      (error: unknown) => error instanceof MicrocksWorkspaceTrustError
+  // The restricted side of this guard is asserted by the "restricted"
+  // configuration in .vscode-test.mjs, which launches without
+  // --disable-workspace-trust. See src/test/restricted.
+  test("runs the CLI once the workspace is trusted", () => {
+    assert.ok(
+      vscode.workspace.isTrusted,
+      "This configuration launches with --disable-workspace-trust."
     );
+    assert.doesNotThrow(() => assertWorkspaceTrusted());
   });
 
   test("builds shared CLI context arguments", () => {

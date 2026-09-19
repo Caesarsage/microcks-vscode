@@ -28,7 +28,7 @@ export async function ensureWorkspaceTrusted(action: string): Promise<boolean> {
     return true;
   }
   const choice = await vscode.window.showWarningMessage(
-    `${action} runs the Microcks CLI against files in this folder. ${UNTRUSTED_WORKSPACE_MESSAGE}`,
+    `${action} needs to run the Microcks CLI. ${UNTRUSTED_WORKSPACE_MESSAGE}`,
     "Manage Workspace Trust"
   );
   if (choice === "Manage Workspace Trust") {

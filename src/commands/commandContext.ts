@@ -22,7 +22,6 @@ export interface MicrocksCommandContext {
   readonly targetForUrl: (serverUrl: string) => ServicesTarget;
   readonly refresh: () => Promise<void>;
   readonly cliCommand: () => string;
-  readonly cliResolution: () => CliResolution;
 }
 
 export function createMicrocksCommandContext(
@@ -112,6 +111,5 @@ export function createMicrocksCommandContext(
     targetForUrl,
     refresh,
     cliCommand: resolveCliCommand,
-    cliResolution: resolveCli,
   };
 }

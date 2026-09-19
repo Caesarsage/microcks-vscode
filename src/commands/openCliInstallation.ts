@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import {
   editorCapabilities,
+  ensureWorkspaceTrusted,
   installLatestStableCli,
   MANAGED_CLI_STATE_KEY,
   requireCliCapabilities,
@@ -16,6 +17,11 @@ export function registerOpenCliInstallationCommand(
   return vscode.commands.registerCommand(
     "microcks.openCliInstallation",
     async () => {
+      // Downloading, extracting and chmod +x'ing a binary is part of arming the
+      // CLI, so it is gated on trust like every other CLI-backed action.
+      if (!(await ensureWorkspaceTrusted("Installing the Microcks CLI"))) {
+        return;
+      }
       const confirmation = await vscode.window.showInformationMessage(
         "Download and install the latest stable Microcks CLI for this operating system?",
         { modal: true },

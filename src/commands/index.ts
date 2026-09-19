@@ -1,10 +1,7 @@
 import * as vscode from "vscode";
 import { ServicesProvider } from "../views/services";
 import { TestsProvider } from "../views/tests";
-import {
-  createMicrocksCommandContext,
-  MicrocksCommandContext,
-} from "./commandContext";
+import { createMicrocksCommandContext } from "./commandContext";
 import { registerClearDryRunSessionCommand } from "./clearDryRunSession";
 import { registerConnectRemoteServerCommand } from "./connectRemoteServer";
 import { registerCopyMockUrlCommand } from "./copyMockUrl";
@@ -38,17 +35,9 @@ export function registerMicrocksCommands(
   );
 
   void commandContext.refresh();
-  warnAboutIgnoredWorkspaceCliPath(commandContext);
 
   extensionContext.subscriptions.push(
     vscode.workspace.onDidGrantWorkspaceTrust(() => {
-      void commandContext.refresh();
-    }),
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (!event.affectsConfiguration("microcks.cliPath")) {
-        return;
-      }
-      warnAboutIgnoredWorkspaceCliPath(commandContext);
       void commandContext.refresh();
     }),
     registerRefreshServicesCommand(commandContext),
@@ -70,28 +59,4 @@ export function registerMicrocksCommands(
     registerOpenInspectorCommand(commandContext),
     registerOpenCliInstallationCommand(commandContext)
   );
-}
-
-/**
- * A `cliPath` written by the open folder is never executed. Say so rather than
- * dropping it silently, which would hide both a misconfiguration and an attempt
- * to have the extension run an arbitrary binary.
- */
-function warnAboutIgnoredWorkspaceCliPath(
-  commandContext: MicrocksCommandContext
-): void {
-  const ignored = commandContext.cliResolution().ignoredWorkspaceValue;
-  if (!ignored) {
-    return;
-  }
-  void vscode.window
-    .showWarningMessage(
-      `This workspace asks Microcks to run "${ignored}". Workspace settings cannot choose the Microcks CLI executable, so it was ignored. Use "Microcks: Set CLI Path" to pick one yourself.`,
-      "Set CLI Path"
-    )
-    .then((choice) => {
-      if (choice === "Set CLI Path") {
-        void vscode.commands.executeCommand("microcks.setCliPath");
-      }
-    });
 }

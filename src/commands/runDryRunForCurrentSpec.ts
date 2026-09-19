@@ -238,10 +238,14 @@ async function runDryRun(
         setActiveDryRunWatch(undefined);
       }
     }
+    // Spawn first: a refused spawn must not leave the trees showing a live
+    // session with no process behind it. No event can arrive in between, the
+    // handlers are asynchronous and this block is not.
+    const child = startDryRunProcess(executable, args, output, options);
     options.context.provider.beginDryRunSession();
     options.context.testsProvider.beginDryRunSession();
     setActiveDryRunWatch({
-      process: startDryRunProcess(executable, args, output, options),
+      process: child,
       provider: options.context.provider,
       testsProvider: options.context.testsProvider,
     });
