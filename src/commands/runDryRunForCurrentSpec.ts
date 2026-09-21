@@ -1,10 +1,12 @@
 import { spawn } from "child_process";
 import * as vscode from "vscode";
 import {
+  assertWorkspaceTrusted,
   classifyMicrocksExitCode,
   containerDriverArgs,
   DryRunEventType,
   editorCapabilities,
+  ensureWorkspaceTrusted,
   parseDryRunWatchEvent,
   requireCliCapabilities,
   resolveContainerDriver,
@@ -20,6 +22,9 @@ export function registerRunDryRunForCurrentSpecCommand(
   return vscode.commands.registerCommand(
     "microcks.runDryRunForCurrentSpec",
     async () => {
+      if (!(await ensureWorkspaceTrusted("Running a Microcks dry-run"))) {
+        return;
+      }
       const artifactPath = await pickArtifactPath();
       if (!artifactPath) {
         return;
@@ -233,10 +238,14 @@ async function runDryRun(
         setActiveDryRunWatch(undefined);
       }
     }
+    // Spawn first: a refused spawn must not leave the trees showing a live
+    // session with no process behind it. No event can arrive in between, the
+    // handlers are asynchronous and this block is not.
+    const child = startDryRunProcess(executable, args, output, options);
     options.context.provider.beginDryRunSession();
     options.context.testsProvider.beginDryRunSession();
     setActiveDryRunWatch({
-      process: startDryRunProcess(executable, args, output, options),
+      process: child,
       provider: options.context.provider,
       testsProvider: options.context.testsProvider,
     });
@@ -279,6 +288,8 @@ function startDryRunProcess(
   output: vscode.OutputChannel,
   options: { watch: boolean; context: MicrocksCommandContext }
 ): ReturnType<typeof spawn> {
+  // Spawns directly instead of going through executeMicrocksCli.
+  assertWorkspaceTrusted();
   const child = spawn(executable, args, { shell: false });
   let stdoutBuffer = "";
   let reachedReady = false;

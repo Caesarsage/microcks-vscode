@@ -3,6 +3,7 @@ import {
   classifyMicrocksExitCode,
   MicrocksCliExitClassification,
 } from "./exitCodes";
+import { assertWorkspaceTrusted } from "./workspaceTrust";
 
 export interface MicrocksCliInvocation {
   readonly executable: string;
@@ -33,6 +34,8 @@ export class MicrocksCliError extends Error {
 export async function executeMicrocksCli(
   invocation: MicrocksCliInvocation
 ): Promise<MicrocksCliResult> {
+  assertWorkspaceTrusted();
+
   return new Promise((resolve, reject) => {
     const child = spawn(invocation.executable, [...invocation.args], {
       cwd: invocation.cwd,

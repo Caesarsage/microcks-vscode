@@ -24,27 +24,39 @@ export function containerDriverArgs(driver: ContainerDriver): string[] {
 
 export const MANAGED_CLI_STATE_KEY = "microcks.managedCliPath";
 
+/**
+ * Reads `microcks.cliPath` from user (or remote user) settings only. The
+ * setting is `machine` scoped, so VS Code already drops values written by a
+ * repository's `.vscode/settings.json`; this keeps the same guarantee inside
+ * the extension, whatever the host merges.
+ */
+export function readConfiguredCliPath(
+  configuration: vscode.WorkspaceConfiguration
+): string | undefined {
+  const inspected = configuration.inspect<string>("cliPath");
+  if (!inspected) {
+    // No inspection available: `get` still honours the `machine` scope.
+    return normalize(configuration.get<string>("cliPath"));
+  }
+  return normalize(inspected.globalValue ?? inspected.defaultValue);
+}
+
 export function resolveMicrocksCliPath(
   configuration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
     "microcks"
   ),
   managedExecutable?: string
 ): CliResolution {
-  const configured = configuration.get<string>("cliPath")?.trim();
+  const configured = readConfiguredCliPath(configuration);
   if (configured) {
-    return {
-      executable: configured,
-      source: "setting",
-    };
+    return { executable: configured, source: "setting" };
   }
   if (managedExecutable) {
-    return {
-      executable: managedExecutable,
-      source: "managed",
-    };
+    return { executable: managedExecutable, source: "managed" };
   }
-  return {
-    executable: "microcks",
-    source: "path",
-  };
+  return { executable: "microcks", source: "path" };
+}
+
+function normalize(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }

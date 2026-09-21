@@ -30,6 +30,15 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Microcks runs the Microcks CLI as a child process against the files in the open folder. In a restricted workspace the extension never starts the CLI, so browsing services, importing artifacts, and dry-run tests stay disabled until you trust the folder.",
+      "restrictedConfigurations": [
+        "microcks.cliPath"
+      ]
+    }
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -234,7 +243,8 @@
         "microcks.cliPath": {
           "type": "string",
           "default": "",
-          "description": "Path to a Microcks CLI executable. If empty, the extension uses its managed CLI when installed, then microcks on PATH."
+          "scope": "machine",
+          "markdownDescription": "Path to a Microcks CLI executable. If empty, the extension uses its managed CLI when installed, then `microcks` on PATH.\n\nThis setting selects a program the extension runs, so it is machine scoped: it can only be set in User or Remote settings and is ignored when a workspace or folder `.vscode/settings.json` tries to set it."
         },
         "microcks.containerDriver": {
           "type": "string",
@@ -267,7 +277,8 @@
     "check-types": "tsc --noEmit",
     "typecheck": "npm run check-types",
     "lint": "eslint src",
-    "test": "vscode-test",
+    "test": "vscode-test && npm run test:restricted",
+    "test:restricted": "node scripts/test-restricted.mjs",
     "test:example": "go -C examples/demo-api test ./...",
     "example:demo-api": "go -C examples/demo-api run .",
     "example:demo-api:drift": "go -C examples/demo-api run . -drift",
@@ -290,6 +301,7 @@
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
+    "mocha": "^11.7.6",
     "npm-run-all": "^4.1.5",
     "ovsx": "^1.1.0",
     "typescript": "^5.4.0",

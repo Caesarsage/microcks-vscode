@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 import {
+  assertWorkspaceTrusted,
   buildBaseArgs,
   buildCapabilitiesArgs,
   buildGetServiceArgs,
@@ -10,6 +11,7 @@ import {
   editorCapabilities,
   parseCapabilitiesDocument,
   parseDryRunWatchEvent,
+  readConfiguredCliPath,
   resolveContainerDriver,
   resolveMicrocksCliPath,
   selectArchive,
@@ -192,35 +194,24 @@ suite("Microcks CLI foundation", () => {
   });
 
   test("resolves configured CLI path before PATH lookup", () => {
-    const configuration = {
-      get: <T>(key: string): T | undefined =>
-        key === "cliPath" ? ("/opt/microcks/bin/microcks" as T) : undefined,
-    } as unknown as vscode.WorkspaceConfiguration;
-
-    const resolved = resolveMicrocksCliPath(configuration);
+    const resolved = resolveMicrocksCliPath(
+      configurationStub({ globalValue: "/opt/microcks/bin/microcks" })
+    );
 
     assert.equal(resolved.executable, "/opt/microcks/bin/microcks");
     assert.equal(resolved.source, "setting");
   });
 
   test("falls back to microcks on PATH when no CLI path is configured", () => {
-    const configuration = {
-      get: <T>(): T | undefined => undefined,
-    } as unknown as vscode.WorkspaceConfiguration;
-
-    const resolved = resolveMicrocksCliPath(configuration);
+    const resolved = resolveMicrocksCliPath(configurationStub({}));
 
     assert.equal(resolved.executable, "microcks");
     assert.equal(resolved.source, "path");
   });
 
   test("uses a managed CLI when no explicit path is configured", () => {
-    const configuration = {
-      get: <T>(): T | undefined => undefined,
-    } as unknown as vscode.WorkspaceConfiguration;
-
     const resolved = resolveMicrocksCliPath(
-      configuration,
+      configurationStub({}),
       "/extension-storage/microcks"
     );
 
@@ -247,6 +238,109 @@ suite("Microcks CLI foundation", () => {
       [],
       "auto must leave runtime selection to the CLI"
     );
+  });
+
+  test("ignores a CLI path coming from workspace settings", () => {
+    const resolved = resolveMicrocksCliPath(
+      configurationStub({ workspaceValue: "/tmp/attacker/payload.sh" })
+    );
+
+    assert.equal(resolved.executable, "microcks");
+    assert.equal(resolved.source, "path");
+  });
+
+  test("ignores a CLI path coming from folder settings", () => {
+    const resolved = resolveMicrocksCliPath(
+      configurationStub({ workspaceFolderValue: "./.vscode/payload.sh" }),
+      "/extension-storage/microcks"
+    );
+
+    assert.equal(resolved.executable, "/extension-storage/microcks");
+    assert.equal(resolved.source, "managed");
+  });
+
+  test("keeps the user CLI path when a workspace tries to override it", () => {
+    const resolved = resolveMicrocksCliPath(
+      configurationStub({
+        globalValue: "/opt/microcks/bin/microcks",
+        workspaceValue: "/tmp/attacker/payload.sh",
+      })
+    );
+
+    assert.equal(resolved.executable, "/opt/microcks/bin/microcks");
+    assert.equal(resolved.source, "setting");
+  });
+
+  test("reads the CLI path from user settings only", () => {
+    const configured = readConfiguredCliPath(
+      configurationStub({
+        globalValue: "  /opt/microcks/bin/microcks  ",
+        workspaceLanguageValue: "/tmp/attacker/payload.sh",
+      })
+    );
+
+    assert.equal(configured, "/opt/microcks/bin/microcks");
+  });
+
+  test("declares microcks.cliPath as a machine scoped, trust restricted setting", () => {
+    const extension = vscode.extensions.getExtension("microcks.microcks-vscode");
+    assert.ok(extension);
+
+    const manifest = extension.packageJSON;
+    const cliPath =
+      manifest.contributes.configuration.properties["microcks.cliPath"];
+
+    assert.equal(
+      cliPath.scope,
+      "machine",
+      "microcks.cliPath must not be settable from a workspace."
+    );
+    assert.equal(manifest.capabilities.untrustedWorkspaces.supported, "limited");
+    assert.ok(
+      manifest.capabilities.untrustedWorkspaces.restrictedConfigurations.includes(
+        "microcks.cliPath"
+      )
+    );
+  });
+
+  test("never spawns a CLI path written by the open workspace", () => {
+    // The fixture workspace ships a .vscode/settings.json that sets
+    // microcks.cliPath, like a repository trying to pick the binary.
+    const attackerPath = "/tmp/microcks-vscode-attacker-payload";
+
+    assert.equal(
+      vscode.workspace.getConfiguration("files").get<string>("eol"),
+      "\r\n",
+      "Control: the fixture .vscode/settings.json must be applied to this window."
+    );
+
+    const configuration = vscode.workspace.getConfiguration("microcks");
+    const inspected = configuration.inspect<string>("cliPath");
+
+    assert.equal(
+      inspected?.workspaceValue,
+      undefined,
+      "A machine scoped setting must not be merged from workspace settings."
+    );
+    assert.equal(inspected?.workspaceFolderValue, undefined);
+    assert.notEqual(configuration.get<string>("cliPath"), attackerPath);
+
+    const resolved = resolveMicrocksCliPath(configuration);
+
+    assert.notEqual(resolved.executable, attackerPath);
+    assert.equal(resolved.executable, "microcks");
+    assert.equal(resolved.source, "path");
+  });
+
+  // The restricted side of this guard is asserted by the "restricted"
+  // configuration in .vscode-test.mjs, which launches without
+  // --disable-workspace-trust. See src/test/restricted.
+  test("runs the CLI once the workspace is trusted", () => {
+    assert.ok(
+      vscode.workspace.isTrusted,
+      "This configuration launches with --disable-workspace-trust."
+    );
+    assert.doesNotThrow(() => assertWorkspaceTrusted());
   });
 
   test("builds shared CLI context arguments", () => {
@@ -366,3 +460,25 @@ suite("Microcks CLI foundation", () => {
     assert.ok(serialized.includes("\\u2028"));
   });
 });
+
+/**
+ * The merged value `get` returns includes workspace values, so these tests fail
+ * if resolution ever goes back to reading `get("cliPath")`.
+ */
+function configurationStub(values: {
+  defaultValue?: string;
+  globalValue?: string;
+  workspaceValue?: string;
+  workspaceFolderValue?: string;
+  workspaceLanguageValue?: string;
+}): vscode.WorkspaceConfiguration {
+  const merged =
+    values.workspaceFolderValue ??
+    values.workspaceValue ??
+    values.globalValue ??
+    values.defaultValue;
+  return {
+    get: () => merged,
+    inspect: () => ({ key: "microcks.cliPath", ...values }),
+  } as unknown as vscode.WorkspaceConfiguration;
+}

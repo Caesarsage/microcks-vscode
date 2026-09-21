@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { MicrocksCommandContext, settingsTarget } from "./commandContext";
+import { MicrocksCommandContext } from "./commandContext";
 
 export function registerSetCliPathCommand(
   context: MicrocksCommandContext
@@ -16,10 +16,13 @@ export function registerSetCliPathCommand(
       return;
     }
 
+    // machine scoped: it can only be written to user (or remote user) settings.
     await vscode.workspace
       .getConfiguration("microcks")
-      .update("cliPath", executable, settingsTarget());
+      .update("cliPath", executable, vscode.ConfigurationTarget.Global);
     context.refresh();
-    vscode.window.showInformationMessage(`Microcks CLI path set to ${executable}`);
+    vscode.window.showInformationMessage(
+      `Microcks CLI path set to ${executable} in your user settings.`
+    );
   });
 }

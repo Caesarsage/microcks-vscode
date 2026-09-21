@@ -37,6 +37,9 @@ export function registerMicrocksCommands(
   void commandContext.refresh();
 
   extensionContext.subscriptions.push(
+    vscode.workspace.onDidGrantWorkspaceTrust(() => {
+      void commandContext.refresh();
+    }),
     registerRefreshServicesCommand(commandContext),
     registerStartLocalServerCommand(commandContext),
     registerConnectRemoteServerCommand(commandContext),

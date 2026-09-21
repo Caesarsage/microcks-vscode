@@ -8,3 +8,4 @@ export * from "./exitCodes";
 export * from "./jsonCommands";
 export * from "./instanceCommands";
 export * from "./importCommands";
+export * from "./workspaceTrust";
