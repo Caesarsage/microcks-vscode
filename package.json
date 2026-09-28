@@ -166,37 +166,37 @@
         {
           "command": "microcks.refreshServices",
           "when": "view == microcksServices",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
-          "command": "microcks.startLocalServer",
+          "submenu": "microcks.connect",
           "when": "view == microcksServices",
           "group": "navigation@2"
         },
         {
           "command": "microcks.switchContext",
           "when": "view == microcksServices",
-          "group": "navigation@3"
-        },
-        {
-          "command": "microcks.connectRemoteServer",
-          "when": "view == microcksServices",
           "group": "navigation@4"
         },
         {
-          "command": "microcks.stopDryRunWatch",
+          "submenu": "microcks.cli",
           "when": "view == microcksServices",
           "group": "navigation@5"
         },
         {
           "command": "microcks.importCurrentFile",
           "when": "view == microcksServices",
-          "group": "navigation@6"
+          "group": "navigation@3"
         },
         {
-          "command": "microcks.openCliInstallation",
+          "command": "microcks.stopDryRunWatch",
           "when": "view == microcksServices",
-          "group": "navigation@7"
+          "group": "2_session@1"
+        },
+        {
+          "command": "microcks.clearDryRunSession",
+          "when": "view == microcksServices",
+          "group": "2_session@2"
         },
         {
           "command": "microcks.filterTests",
@@ -204,14 +204,19 @@
           "group": "navigation@1"
         },
         {
+          "command": "microcks.clearTestFilter",
+          "when": "view == microcksTests",
+          "group": "1_filter@1"
+        },
+        {
           "command": "microcks.stopDryRunWatch",
           "when": "view == microcksTests",
-          "group": "navigation@2"
+          "group": "2_session@1"
         },
         {
           "command": "microcks.clearDryRunSession",
           "when": "view == microcksTests",
-          "group": "navigation@3"
+          "group": "2_session@2"
         }
       ],
       "view/item/context": [
@@ -240,6 +245,42 @@
           "when": "view == microcksServices && viewItem == operation",
           "group": "1_actions@2"
         }
+      ],
+      "microcks.connect": [
+        {
+          "command": "microcks.startLocalServer",
+          "group": "1_attach@1"
+        },
+        {
+          "command": "microcks.connectRemoteServer",
+          "group": "1_attach@2"
+        },
+        {
+          "command": "microcks.runDryRunForCurrentSpec",
+          "group": "1_attach@3"
+        },
+        {
+          "command": "microcks.stopLocalServer",
+          "group": "2_manage@1"
+        },
+        {
+          "command": "microcks.signOutContext",
+          "group": "3_teardown@1"
+        },
+        {
+          "command": "microcks.disconnectServer",
+          "group": "3_teardown@2"
+        }
+      ],
+      "microcks.cli": [
+        {
+          "command": "microcks.openCliInstallation",
+          "group": "1_cli@1"
+        },
+        {
+          "command": "microcks.setCliPath",
+          "group": "1_cli@2"
+        }
       ]
     },
     "configuration": {
@@ -267,7 +308,19 @@
           "description": "Container runtime used for dry-run tests and Start Local Server. Choose podman if Docker is installed but you run Podman, since the CLI only auto-detects Podman when Docker is absent."
         }
       }
-    }
+    },
+    "submenus": [
+      {
+        "id": "microcks.connect",
+        "label": "Connect to Microcks",
+        "icon": "$(plug)"
+      },
+      {
+        "id": "microcks.cli",
+        "label": "Microcks CLI",
+        "icon": "$(tools)"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
