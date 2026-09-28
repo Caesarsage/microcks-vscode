@@ -563,12 +563,12 @@ export class InspectorPanel {
       function renderResponse(m) {
         const pretty = tryPretty(m.body, m.contentType);
         const ok = String(m.status).startsWith("2");
-        const fromLabel = m.isExample ? '<span class="k">From: Microcks example</span>' : '<span class="k">Time:</span> <span class="v">' + m.elapsed + ' ms</span>';
+        const fromLabel = m.isExample ? '<span class="k">From: Microcks example</span>' : '<span class="k">Time:</span> <span class="v">' + escapeText(m.elapsed) + ' ms</span>';
         respEl.innerHTML = \`
           <div class="resp-status">
-            <span><span class="k">Status:</span> <span class="v \${ok ? 'ok' : 'err'}">\${m.status}</span></span>
+            <span><span class="k">Status:</span> <span class="v \${ok ? 'ok' : 'err'}">\${escapeText(m.status)}</span></span>
             \${fromLabel}
-            <span><span class="k">Size:</span> <span class="v">\${m.size} B</span></span>
+            <span><span class="k">Size:</span> <span class="v">\${escapeText(m.size)} B</span></span>
             <span class="push-right"><span class="k">\${escapeText(m.contentType)}</span></span>
           </div>
           <div class="resp-body">\${escapeText(pretty)}</div>
@@ -608,7 +608,7 @@ export class InspectorPanel {
         const body = lines
           .map((line, k) => \`<div class="dl\${flags && flags[k] ? " chg" : ""}">\${escapeText(line) || "&nbsp;"}</div>\`)
           .join("");
-        return \`<div class="resp-status"><span><span class="k">\${label} status:</span> <span class="v \${ok ? "ok" : "err"}">\${side.status}</span></span></div><div class="resp-body">\${body}</div>\`;
+        return \`<div class="resp-status"><span><span class="k">\${label} status:</span> <span class="v \${ok ? "ok" : "err"}">\${escapeText(side.status)}</span></span></div><div class="resp-body">\${body}</div>\`;
       }
 
       function renderCompare(m) {
