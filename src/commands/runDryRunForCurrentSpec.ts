@@ -305,8 +305,10 @@ function startDryRunProcess(
     stdoutBuffer = lines.pop() ?? "";
     for (const line of lines) {
       if (line.trim()) {
-        reachedReady ||=
-          handleDryRunEvent(line, output, options.context) === "ready";
+        // Assign after calling: `||=` short-circuits and would drop every
+        // event after the first "ready".
+        const type = handleDryRunEvent(line, output, options.context);
+        reachedReady ||= type === "ready";
       }
     }
   });
