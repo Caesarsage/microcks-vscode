@@ -31,3 +31,17 @@ export async function startLocalInstance(
   });
   return JSON.parse(result.stdout) as MicrocksInstanceStartResult;
 }
+
+export async function stopLocalInstance(
+  options: CliJsonCommandOptions,
+  onProgress?: (text: string) => void
+): Promise<void> {
+  await requireCliCapabilities(options.executable, [
+    editorCapabilities.instanceStop,
+  ]);
+  await executeMicrocksCli({
+    executable: options.executable,
+    args: ["stop", ...buildBaseArgs(options)],
+    onStderr: onProgress,
+  });
+}

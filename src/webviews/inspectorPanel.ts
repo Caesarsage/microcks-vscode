@@ -383,6 +383,13 @@ export class InspectorPanel {
         font-size: 12px;
       }
       .compare-bar strong { color: var(--vscode-foreground); }
+      .compare-bar .cmp-same { color: var(--vscode-testing-iconPassed, #6ee7a7); font-weight: 700; }
+      .compare-bar .cmp-diff { color: var(--vscode-testing-iconFailed, #fca5a5); font-weight: 700; }
+      .resp-body .dl { display: block; }
+      .resp-body .dl.chg {
+        background: var(--vscode-diffEditor-removedTextBackground, rgba(248, 113, 113, 0.18));
+        box-shadow: inset 2px 0 0 var(--vscode-testing-iconFailed, #fca5a5);
+      }
       .compare-side {
         display: flex;
         flex-direction: column;
@@ -572,18 +579,70 @@ export class InspectorPanel {
         respEl.innerHTML = \`<div class="resp-empty error-text">⚠ \${escapeText(message)}</div>\`;
       }
 
+      // LCS over lines; true means the line has no partner on the other side.
+      function diffFlags(a, b) {
+        const n = a.length, m = b.length;
+        const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+        for (let i = n - 1; i >= 0; i--) {
+          for (let j = m - 1; j >= 0; j--) {
+            dp[i][j] = a[i] === b[j]
+              ? dp[i + 1][j + 1] + 1
+              : Math.max(dp[i + 1][j], dp[i][j + 1]);
+          }
+        }
+        const fa = new Array(n).fill(true), fb = new Array(m).fill(true);
+        let i = 0, j = 0;
+        while (i < n && j < m) {
+          if (a[i] === b[j]) { fa[i] = false; fb[j] = false; i++; j++; }
+          else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+          else j++;
+        }
+        return [fa, fb];
+      }
+
+      function compareSide(label, side, lines, flags) {
+        if (side.error) {
+          return \`<div class="resp-empty error-text">⚠ \${escapeText(side.error)}</div>\`;
+        }
+        const ok = String(side.status).startsWith("2");
+        const body = lines
+          .map((line, k) => \`<div class="dl\${flags && flags[k] ? " chg" : ""}">\${escapeText(line) || "&nbsp;"}</div>\`)
+          .join("");
+        return \`<div class="resp-status"><span><span class="k">\${label} status:</span> <span class="v \${ok ? "ok" : "err"}">\${side.status}</span></span></div><div class="resp-body">\${body}</div>\`;
+      }
+
       function renderCompare(m) {
-        const mockBody = m.mock.error
-          ? \`<div class="resp-empty error-text">⚠ \${escapeText(m.mock.error)}</div>\`
-          : \`<div class="resp-status"><span><span class="k">Mock status:</span> <span class="v \${String(m.mock.status).startsWith("2") ? "ok" : "err"}">\${m.mock.status}</span></span></div><div class="resp-body">\${escapeText(tryPretty(m.mock.body, m.mock.contentType))}</div>\`;
-        const realBody = m.real.error
-          ? \`<div class="resp-empty error-text">⚠ \${escapeText(m.real.error)}</div>\`
-          : \`<div class="resp-status"><span><span class="k">Real status:</span> <span class="v \${String(m.real.status).startsWith("2") ? "ok" : "err"}">\${m.real.status}</span></span></div><div class="resp-body">\${escapeText(tryPretty(m.real.body, m.real.contentType))}</div>\`;
+        const mockLines = m.mock.error ? [] : tryPretty(m.mock.body, m.mock.contentType).split("\\n");
+        const realLines = m.real.error ? [] : tryPretty(m.real.body, m.real.contentType).split("\\n");
+
+        const diffable = !m.mock.error && !m.real.error &&
+          mockLines.length <= 2000 && realLines.length <= 2000;
+        let fa = null, fb = null, changed = 0;
+        if (diffable) {
+          const flags = diffFlags(mockLines, realLines);
+          fa = flags[0];
+          fb = flags[1];
+          changed = fa.filter(Boolean).length + fb.filter(Boolean).length;
+        }
+
+        const statusMismatch = !m.mock.error && !m.real.error &&
+          String(m.mock.status) !== String(m.real.status);
+
+        let summary = "";
+        if (diffable && changed === 0 && !statusMismatch) {
+          summary = ' — <span class="cmp-same">identical</span>';
+        } else if (diffable) {
+          summary = ' — <span class="cmp-diff">' + changed + (changed === 1 ? " line differs" : " lines differ") +
+            (statusMismatch ? ", status mismatch" : "") + "</span>";
+        } else if (statusMismatch) {
+          summary = ' — <span class="cmp-diff">status mismatch</span>';
+        }
+
         respEl.innerHTML = \`
           <div class="compare-wrap">
-            <div class="compare-bar">⇄ <strong>Compare:</strong> mock vs <code>\${escapeText(m.realUrl)}</code></div>
-            <div class="compare-side">\${mockBody}</div>
-            <div class="compare-side">\${realBody}</div>
+            <div class="compare-bar">⇄ <strong>Compare:</strong> mock vs <code>\${escapeText(m.realUrl)}</code>\${summary}</div>
+            <div class="compare-side">\${compareSide("Mock", m.mock, mockLines, fa)}</div>
+            <div class="compare-side">\${compareSide("Real", m.real, realLines, fb)}</div>
           </div>
         \`;
       }

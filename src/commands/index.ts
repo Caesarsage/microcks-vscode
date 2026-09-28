@@ -20,6 +20,7 @@ import { registerRunDryRunForCurrentSpecCommand } from "./runDryRunForCurrentSpe
 import { registerSetCliPathCommand } from "./setCliPath";
 import { registerSignOutContextCommand } from "./signOutContext";
 import { registerStartLocalServerCommand } from "./startLocalServer";
+import { registerStopLocalServerCommand } from "./stopLocalServer";
 import { registerStopDryRunWatchCommand } from "./stopDryRunWatch";
 import { registerSwitchContextCommand } from "./switchContext";
 
@@ -42,6 +43,7 @@ export function registerMicrocksCommands(
     }),
     registerRefreshServicesCommand(commandContext),
     registerStartLocalServerCommand(commandContext),
+    registerStopLocalServerCommand(commandContext),
     registerConnectRemoteServerCommand(commandContext),
     registerDisconnectServerCommand(commandContext),
     registerFilterTestsCommand(testsProvider),
