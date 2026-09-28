@@ -27,20 +27,20 @@ document.querySelectorAll(".ex-card").forEach((card) => {
     card.classList.add("active");
     const i = parseInt(card.dataset.index, 10);
     const ex = examples[i];
-    if (!ex) return;
+    if (!ex) {return;}
     renderResponse({ status: ex.status, contentType: ex.contentType, body: ex.body, elapsed: 0, size: ex.body.length, isExample: true });
   });
 });
 
 window.addEventListener("message", (e) => {
   const m = e.data;
-  if (m.type === "response") renderResponse(m);
-  else if (m.type === "error") renderError(m.message);
-  else if (m.type === "compare-result") renderCompare(m);
+  if (m.type === "response") {renderResponse(m);}
+  else if (m.type === "error") {renderError(m.message);}
+  else if (m.type === "compare-result") {renderCompare(m);}
 });
 
 function tryPretty(body, contentType) {
-  if (!contentType || !contentType.includes("json")) return body;
+  if (!contentType || !contentType.includes("json")) {return body;}
   try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; }
 }
 
@@ -78,8 +78,8 @@ function diffFlags(a, b) {
   let i = 0, j = 0;
   while (i < n && j < m) {
     if (a[i] === b[j]) { fa[i] = false; fb[j] = false; i++; j++; }
-    else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
-    else j++;
+    else if (dp[i + 1][j] >= dp[i][j + 1]) {i++;}
+    else {j++;}
   }
   return [fa, fb];
 }
