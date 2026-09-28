@@ -10,6 +10,7 @@ export const editorCapabilities = {
   contextUseJson: "context.use.json",
   contextDeleteJson: "context.delete.json",
   instanceStartJson: "instance.start.json",
+  instanceStop: "instance.stop",
   artifactImportFileJson: "artifact.import.file.json",
   serviceListJson: "service.list.json",
   serviceGetJson: "service.get.json",

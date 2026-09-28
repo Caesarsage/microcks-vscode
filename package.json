@@ -77,6 +77,11 @@
         "icon": "$(run)"
       },
       {
+        "command": "microcks.stopLocalServer",
+        "title": "Microcks: Stop Local Server",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "microcks.connectRemoteServer",
         "title": "Microcks: Sign In to Remote Server",
         "icon": "$(plug)"
