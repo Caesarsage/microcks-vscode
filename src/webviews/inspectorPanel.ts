@@ -575,10 +575,10 @@ export class InspectorPanel {
       function renderCompare(m) {
         const mockBody = m.mock.error
           ? \`<div class="resp-empty error-text">⚠ \${escapeText(m.mock.error)}</div>\`
-          : \`<div class="resp-status"><span><span class="k">Mock status:</span> <span class="v ok">\${m.mock.status}</span></span></div><div class="resp-body">\${escapeText(tryPretty(m.mock.body, m.mock.contentType))}</div>\`;
+          : \`<div class="resp-status"><span><span class="k">Mock status:</span> <span class="v \${String(m.mock.status).startsWith("2") ? "ok" : "err"}">\${m.mock.status}</span></span></div><div class="resp-body">\${escapeText(tryPretty(m.mock.body, m.mock.contentType))}</div>\`;
         const realBody = m.real.error
           ? \`<div class="resp-empty error-text">⚠ \${escapeText(m.real.error)}</div>\`
-          : \`<div class="resp-status"><span><span class="k">Real status:</span> <span class="v ok">\${m.real.status}</span></span></div><div class="resp-body">\${escapeText(tryPretty(m.real.body, m.real.contentType))}</div>\`;
+          : \`<div class="resp-status"><span><span class="k">Real status:</span> <span class="v \${String(m.real.status).startsWith("2") ? "ok" : "err"}">\${m.real.status}</span></span></div><div class="resp-body">\${escapeText(tryPretty(m.real.body, m.real.contentType))}</div>\`;
         respEl.innerHTML = \`
           <div class="compare-wrap">
             <div class="compare-bar">⇄ <strong>Compare:</strong> mock vs <code>\${escapeText(m.realUrl)}</code></div>

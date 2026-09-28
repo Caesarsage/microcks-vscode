@@ -37,7 +37,8 @@ export function registerRunDryRunForCurrentSpecCommand(
         placeHolder: "E-Commerce Platform API:2.0.0",
         value: metadata.serviceRef,
       });
-      if (!serviceAndVersion) {
+      const serviceRef = serviceAndVersion?.trim();
+      if (!serviceRef) {
         return;
       }
 
@@ -60,7 +61,9 @@ export function registerRunDryRunForCurrentSpecCommand(
           return undefined;
         },
       });
-      if (!targetUrl) {
+      // `new URL(" http://x ")` parses, so validateInput never catches padding.
+      const endpoint = targetUrl?.trim();
+      if (!endpoint) {
         return;
       }
 
@@ -106,7 +109,7 @@ export function registerRunDryRunForCurrentSpecCommand(
         }
         args.push("--watch", "--output", "json");
       }
-      args.push(serviceAndVersion, targetUrl, runnerType);
+      args.push(serviceRef, endpoint, runnerType);
 
       await runDryRun(executable, args, {
         watch: mode === "watch",
@@ -305,8 +308,10 @@ function startDryRunProcess(
     stdoutBuffer = lines.pop() ?? "";
     for (const line of lines) {
       if (line.trim()) {
-        reachedReady ||=
-          handleDryRunEvent(line, output, options.context) === "ready";
+        // Assign after calling: `||=` short-circuits and would drop every
+        // event after the first "ready".
+        const type = handleDryRunEvent(line, output, options.context);
+        reachedReady ||= type === "ready";
       }
     }
   });

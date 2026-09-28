@@ -8,11 +8,8 @@ import * as vscode from "vscode";
 const execFileAsync = promisify(execFile);
 const RELEASES_BASE = "https://github.com/microcks/microcks-cli/releases";
 
-// Deliberately not api.github.com. Unauthenticated API calls are capped at 60
-// per hour per IP, which anyone behind corporate NAT shares with their whole
-// office, and the failure is an opaque 403. The plain releases/latest URL
-// redirects to the newest stable tag with no quota and no token, and
-// checksums.txt doubles as the asset inventory.
+// Not api.github.com: unauthenticated calls are capped at 60/hour per IP and
+// fail with an opaque 403. This URL redirects to the latest stable tag instead.
 const LATEST_RELEASE_URL = `${RELEASES_BASE}/latest`;
 
 interface ReleaseAsset {
