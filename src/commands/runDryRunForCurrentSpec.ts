@@ -10,6 +10,7 @@ import {
   parseDryRunWatchEvent,
   requireCliCapabilities,
   resolveContainerDriver,
+  TestResult,
 } from "../cli";
 import { readArtifactMetadata } from "../utils/artifact";
 import { shellQuote } from "../utils/shell";
@@ -107,8 +108,10 @@ export function registerRunDryRunForCurrentSpecCommand(
           await showCliRecovery(error as Error);
           return;
         }
-        args.push("--watch", "--output", "json");
+        args.push("--watch");
       }
+      // Watch streams NDJSON events; a single run returns one result document.
+      args.push("--output", "json");
       args.push(serviceRef, endpoint, runnerType);
 
       await runDryRun(executable, args, {
@@ -300,7 +303,7 @@ function startDryRunProcess(
   child.stdout.on("data", (chunk: Buffer) => {
     const text = chunk.toString();
     if (!options.watch) {
-      output.append(text);
+      stdoutBuffer += text;
       return;
     }
     stdoutBuffer += text;
@@ -321,6 +324,9 @@ function startDryRunProcess(
     vscode.window.showErrorMessage(`Microcks dry-run failed: ${error.message}`);
   });
   child.on("close", (code, signal) => {
+    if (!options.watch) {
+      recordSingleRunResult(stdoutBuffer, output, options.context);
+    }
     const activeWatch = getActiveDryRunWatch();
     if (activeWatch?.process === child) {
       if (activeWatch.forceStopTimer) {
@@ -389,6 +395,40 @@ function waitForDryRunProcess(
     child.on("error", () => resolve());
     child.on("close", () => resolve());
   });
+}
+
+// A single run prints one TestResult document rather than an event stream.
+function recordSingleRunResult(
+  stdout: string,
+  output: vscode.OutputChannel,
+  context: MicrocksCommandContext
+): void {
+  const text = stdout.trim();
+  if (!text) {
+    return;
+  }
+
+  let result: TestResult;
+  try {
+    result = JSON.parse(text) as TestResult;
+  } catch {
+    output.appendLine(text);
+    return;
+  }
+
+  context.testsProvider.recordDryRunResult(result);
+  context.testsProvider.markDryRunStopped();
+
+  output.appendLine(result.success ? "SUCCESS" : "FAILURE");
+  for (const testCase of result.testCaseResults ?? []) {
+    output.appendLine(`  [${testCase.success ? "PASS" : "FAIL"}] ${testCase.operationName}`);
+    for (const step of testCase.testStepResults ?? []) {
+      const message = (step.message ?? "").trim();
+      if (!step.success && message) {
+        output.appendLine(`      ${message}`);
+      }
+    }
+  }
 }
 
 function handleDryRunEvent(
