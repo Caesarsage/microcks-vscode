@@ -24,6 +24,7 @@ export function registerOpenInspectorCommand(
         return;
       }
       await InspectorPanel.show(
+        context.extensionContext.extensionUri,
         new MicrocksMockClient(target.serverUrl),
         target.dataSource,
         node.service,
